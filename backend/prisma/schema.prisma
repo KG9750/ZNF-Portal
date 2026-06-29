@@ -6,3 +6,158 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+model Zone {
+  id             String          @id @default(uuid())
+  name           String
+  type           String
+  status         ZoneStatus      @default(ACTIVE)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  homeDevices    Device[]        @relation("DeviceHomeZone")
+  currentDevices Device[]        @relation("DeviceCurrentZone")
+  zoneBookings   ZoneBooking[]
+  deviceBookings DeviceBooking[]
+  workOrders     WorkOrder[]
+
+  @@map("zone")
+}
+
+model Device {
+  id             String          @id @default(uuid())
+  name           String
+  type           String
+  homeZoneId     String          @map("home_zone_id")
+  currentZoneId  String          @map("current_zone_id")
+  status         DeviceStatus    @default(AVAILABLE)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  homeZone       Zone            @relation("DeviceHomeZone", fields: [homeZoneId], references: [id])
+  currentZone    Zone            @relation("DeviceCurrentZone", fields: [currentZoneId], references: [id])
+  deviceBookings DeviceBooking[]
+  workOrders     WorkOrder[]
+
+  @@index([homeZoneId])
+  @@index([currentZoneId])
+  @@map("device")
+}
+
+model ZoneBooking {
+  id        String        @id @default(uuid())
+  zoneId    String        @map("zone_id")
+  startTime DateTime      @map("start_time")
+  endTime   DateTime      @map("end_time")
+  status    BookingStatus @default(RESERVED)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  zone      Zone          @relation(fields: [zoneId], references: [id])
+
+  @@index([zoneId])
+  @@index([startTime, endTime])
+  @@map("zone_booking")
+}
+
+model DeviceBooking {
+  id        String        @id @default(uuid())
+  deviceId  String        @map("device_id")
+  zoneId    String        @map("zone_id")
+  startTime DateTime      @map("start_time")
+  endTime   DateTime      @map("end_time")
+  status    BookingStatus @default(RESERVED)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+  device    Device        @relation(fields: [deviceId], references: [id])
+  zone      Zone          @relation(fields: [zoneId], references: [id])
+
+  @@index([deviceId])
+  @@index([zoneId])
+  @@index([startTime, endTime])
+  @@map("device_booking")
+}
+
+model VisitBooking {
+  id           String        @id @default(uuid())
+  startTime    DateTime      @map("start_time")
+  endTime      DateTime      @map("end_time")
+  visitorOrg   String        @map("visitor_org")
+  visitorCount Int           @map("visitor_count")
+  needDemo     Boolean       @default(false) @map("need_demo")
+  status       BookingStatus @default(RESERVED)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  visitRecords VisitRecord[]
+
+  @@index([startTime, endTime])
+  @@map("visit_booking")
+}
+
+model VisitRecord {
+  id             String       @id @default(uuid())
+  visitBookingId String       @map("visit_booking_id")
+  actualStart    DateTime     @map("actual_start")
+  actualEnd      DateTime     @map("actual_end")
+  actualCount    Int          @map("actual_count")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  visitBooking   VisitBooking @relation(fields: [visitBookingId], references: [id])
+
+  @@index([visitBookingId])
+  @@map("visit_record")
+}
+
+model WorkOrder {
+  id        String          @id @default(uuid())
+  type      WorkOrderType
+  deviceId  String?         @map("device_id")
+  zoneId    String?         @map("zone_id")
+  status    WorkOrderStatus @default(OPEN)
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+  device    Device?         @relation(fields: [deviceId], references: [id])
+  zone      Zone?           @relation(fields: [zoneId], references: [id])
+
+  @@index([deviceId])
+  @@index([zoneId])
+  @@map("work_order")
+}
+
+model InquiryRecord {
+  id        String   @id @default(uuid())
+  orgName   String   @map("org_name")
+  contact   String
+  source    String
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("inquiry_record")
+}
+
+enum ZoneStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum DeviceStatus {
+  AVAILABLE
+  IN_USE
+  FAULT
+  MAINTENANCE
+}
+
+enum BookingStatus {
+  RESERVED
+  CANCELLED
+}
+
+enum WorkOrderType {
+  FAULT
+  MAINTENANCE
+  CLEAN
+}
+
+enum WorkOrderStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
