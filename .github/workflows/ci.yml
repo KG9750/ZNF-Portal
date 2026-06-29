@@ -3,35 +3,70 @@ name: CI Pipeline
 on:
   pull_request:
     branches: [ main ]
+  push:
+    branches: [ main ]
 
 jobs:
-  test:
+  ci-agent:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+
+      - name: Validate agent docs
+        run: |
+          test -f AGENTS.md
+          test -f docs/GOVERNANCE.md
+          test -f docs/V1_TRACEABILITY.md
+          test -f docs/agents/PLANNER.md
+          test -f docs/agents/BUILDER.md
+          test -f docs/agents/REVIEWER.md
+          test -f docs/agents/CI_AGENT.md
+          test -f .github/pull_request_template.md
+          test -f .github/ISSUE_TEMPLATE/implementation-task.md
+          grep -q "No agent can cross responsibilities." README.md
 
       - name: Setup Node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: 18
 
-      - name: Install backend
+      - name: Install backend dependencies
         run: |
           cd backend
-          npm install
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
-      - name: Install frontend
+      - name: Install frontend dependencies
         run: |
           cd frontend
-          npm install
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Lint backend
+        run: |
+          cd backend
+          npm run lint
+
+      - name: Lint frontend
+        run: |
+          cd frontend
+          npm run lint
 
       - name: Build backend
         run: |
           cd backend
-          npm run build || echo "no build script yet"
+          npm run build
 
       - name: Build frontend
         run: |
           cd frontend
-          npm run build || echo "no build script yet"
+          npm run build
+
+      - name: Test backend
+        run: |
+          cd backend
+          npm test
+
+      - name: Test frontend
+        run: |
+          cd frontend
+          npm test

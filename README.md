@@ -23,9 +23,30 @@
 
 ## Codex Development Rules
 
+See: docs/GIT_CODEx_STANDARDS.md
+
 Codex must follow:
 1. Do not introduce CRM / ERP / IoT systems
 2. Do not merge booking types
 3. Device must belong to Zone
 4. Conflict detection is time-overlap based only
 5. Keep architecture minimal and modular
+
+## Multi-Agent Rules
+
+1. Planner ONLY designs steps
+2. Builder ONLY writes code
+3. Reviewer ONLY evaluates code
+4. CI ONLY runs checks
+
+No agent can cross responsibilities.
+
+## L5 Self-Evolution System
+
+This repository supports a controlled self-evolution workflow.
+
+See:
+
+- docs/l5/SELF_EVOLUTION_ENGINE.md
+- docs/l5/L5_OPERATING_POLICY.md
+- docs/l5/SYSTEM_MUTATION_RULES.md

@@ -1,0 +1,26 @@
+{
+  "name": "znf-portal-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "tsc --noEmit",
+    "build": "DATABASE_URL=file:./dev.db prisma validate && prisma generate && tsc -p tsconfig.build.json",
+    "test": "node --test --import tsx test/*.test.ts",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "DATABASE_URL=file:./dev.db prisma validate"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.0",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.25",
+    "@types/node": "^22.19.1",
+    "prisma": "^6.19.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}
