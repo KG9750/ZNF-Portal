@@ -1,0 +1,11 @@
+{
+  "name": "znf-portal-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "node --check src/index.js && node --check test/index.test.js && node --check scripts/build.js",
+    "build": "node scripts/build.js",
+    "test": "node --test"
+  }
+}

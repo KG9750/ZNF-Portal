@@ -16,6 +16,7 @@ jobs:
 
       - name: Check required L5 files
         run: |
+          test -f AGENTS.md
           test -f docs/l5/SELF_EVOLUTION_ENGINE.md
           test -f docs/l5/PERFORMANCE_ANALYZER.md
           test -f docs/l5/SYSTEM_MUTATION_RULES.md
@@ -29,3 +30,9 @@ jobs:
           test -f docs/agents/BUILDER.md
           test -f docs/agents/REVIEWER.md
           test -f docs/agents/CI_AGENT.md
+
+      - name: Check workflow templates exist
+        run: |
+          test -f .github/pull_request_template.md
+          test -f .github/ISSUE_TEMPLATE/implementation-task.md
+          test -f .github/ISSUE_TEMPLATE/l5-evolution-proposal.md

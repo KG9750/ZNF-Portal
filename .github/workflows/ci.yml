@@ -15,50 +15,56 @@ jobs:
 
       - name: Validate agent docs
         run: |
+          test -f AGENTS.md
           test -f docs/agents/PLANNER.md
           test -f docs/agents/BUILDER.md
           test -f docs/agents/REVIEWER.md
           test -f docs/agents/CI_AGENT.md
+          test -f .github/pull_request_template.md
+          test -f .github/ISSUE_TEMPLATE/implementation-task.md
           grep -q "No agent can cross responsibilities." README.md
 
       - name: Setup Node
-        if: ${{ hashFiles('backend/package.json', 'frontend/package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 18
 
       - name: Install backend dependencies
-        if: ${{ hashFiles('backend/package.json') != '' }}
         run: |
           cd backend
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
       - name: Install frontend dependencies
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: |
           cd frontend
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
       - name: Lint backend
-        if: ${{ hashFiles('backend/package.json') != '' }}
         run: |
           cd backend
-          npm run lint --if-present
+          npm run lint
 
       - name: Lint frontend
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: |
           cd frontend
-          npm run lint --if-present
+          npm run lint
 
       - name: Build backend
-        if: ${{ hashFiles('backend/package.json') != '' }}
         run: |
           cd backend
-          npm run build --if-present
+          npm run build
 
       - name: Build frontend
-        if: ${{ hashFiles('frontend/package.json') != '' }}
         run: |
           cd frontend
-          npm run build --if-present
+          npm run build
+
+      - name: Test backend
+        run: |
+          cd backend
+          npm test
+
+      - name: Test frontend
+        run: |
+          cd frontend
+          npm test
