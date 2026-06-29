@@ -20,3 +20,12 @@
 - booking 是唯一调度入口
 - device 必须绑定 zone
 - 所有冲突必须基于时间重叠检测
+
+## Codex Development Rules
+
+Codex must follow:
+1. Do not introduce CRM / ERP / IoT systems
+2. Do not merge booking types
+3. Device must belong to Zone
+4. Conflict detection is time-overlap based only
+5. Keep architecture minimal and modular
