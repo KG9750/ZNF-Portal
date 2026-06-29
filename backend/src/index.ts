@@ -5,7 +5,7 @@ import { shutdownServer } from "./server/shutdown.js";
 
 const config = loadConfig();
 const prisma = createPrismaClient(config.databaseUrl);
-const app = createApp(config);
+const app = createApp(config, prisma);
 
 const server = app.listen(config.port, () => {
   console.log(`ZNF-Portal backend listening on port ${config.port}`);
