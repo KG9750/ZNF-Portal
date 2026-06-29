@@ -3,6 +3,9 @@ import type { PrismaClient } from "@prisma/client";
 
 import type { BackendConfig } from "./config/env.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { createDeviceBookingRepository } from "./modules/device-booking/device-booking.repository.js";
+import { createDeviceBookingRouter } from "./modules/device-booking/device-booking.router.js";
+import { createDeviceBookingService } from "./modules/device-booking/device-booking.service.js";
 import { createDeviceRepository } from "./modules/device/device.repository.js";
 import { createDeviceRouter } from "./modules/device/device.router.js";
 import { createDeviceService } from "./modules/device/device.service.js";
@@ -24,6 +27,7 @@ export function createApp(config: BackendConfig, prisma?: PrismaClient): Express
     app.use(createZoneRouter(createZoneService(createZoneRepository(prisma))));
     app.use(createDeviceRouter(createDeviceService(createDeviceRepository(prisma))));
     app.use(createZoneBookingRouter(createZoneBookingService(createZoneBookingRepository(prisma))));
+    app.use(createDeviceBookingRouter(createDeviceBookingService(createDeviceBookingRepository(prisma))));
   }
 
   app.use(errorHandler);
