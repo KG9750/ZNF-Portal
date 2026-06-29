@@ -52,8 +52,7 @@ model ZoneBooking {
   updatedAt DateTime      @updatedAt @map("updated_at")
   zone      Zone          @relation(fields: [zoneId], references: [id])
 
-  @@index([zoneId])
-  @@index([startTime, endTime])
+  @@index([zoneId, startTime, endTime])
   @@map("zone_booking")
 }
 
@@ -69,9 +68,8 @@ model DeviceBooking {
   device    Device        @relation(fields: [deviceId], references: [id])
   zone      Zone          @relation(fields: [zoneId], references: [id])
 
-  @@index([deviceId])
+  @@index([deviceId, startTime, endTime])
   @@index([zoneId])
-  @@index([startTime, endTime])
   @@map("device_booking")
 }
 
@@ -82,27 +80,11 @@ model VisitBooking {
   visitorOrg   String        @map("visitor_org")
   visitorCount Int           @map("visitor_count")
   needDemo     Boolean       @default(false) @map("need_demo")
-  status       BookingStatus @default(RESERVED)
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
-  visitRecords VisitRecord[]
 
   @@index([startTime, endTime])
   @@map("visit_booking")
-}
-
-model VisitRecord {
-  id             String       @id @default(uuid())
-  visitBookingId String       @map("visit_booking_id")
-  actualStart    DateTime     @map("actual_start")
-  actualEnd      DateTime     @map("actual_end")
-  actualCount    Int          @map("actual_count")
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  visitBooking   VisitBooking @relation(fields: [visitBookingId], references: [id])
-
-  @@index([visitBookingId])
-  @@map("visit_record")
 }
 
 model WorkOrder {
@@ -126,7 +108,6 @@ model InquiryRecord {
   orgName   String   @map("org_name")
   contact   String
   source    String
-  note      String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
