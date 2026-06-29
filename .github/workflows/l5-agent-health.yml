@@ -17,6 +17,8 @@ jobs:
       - name: Check required L5 files
         run: |
           test -f AGENTS.md
+          test -f docs/GOVERNANCE.md
+          test -f docs/V1_TRACEABILITY.md
           test -f docs/l5/SELF_EVOLUTION_ENGINE.md
           test -f docs/l5/PERFORMANCE_ANALYZER.md
           test -f docs/l5/SYSTEM_MUTATION_RULES.md

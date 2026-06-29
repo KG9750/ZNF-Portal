@@ -15,6 +15,12 @@ L5 improves the development system, not the product directly.
 - CI behavior changes require L4 approval if they block merging.
 - Schema, architecture, auth, deployment, or runtime behavior changes require L4 approval.
 
+L4 authority, request flow, and approval records are defined in:
+
+```text
+docs/GOVERNANCE.md
+```
+
 ## Audit Rule
 
 Every accepted L5 change must be recorded in:

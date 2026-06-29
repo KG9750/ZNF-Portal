@@ -16,6 +16,8 @@ jobs:
       - name: Validate agent docs
         run: |
           test -f AGENTS.md
+          test -f docs/GOVERNANCE.md
+          test -f docs/V1_TRACEABILITY.md
           test -f docs/agents/PLANNER.md
           test -f docs/agents/BUILDER.md
           test -f docs/agents/REVIEWER.md

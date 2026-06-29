@@ -16,9 +16,12 @@ Agents must read this file before working on Issues, Pull Requests, reviews, or 
    - Reviewer: `docs/agents/REVIEWER.md`
    - CI: `docs/agents/CI_AGENT.md`
 4. L5 governance files:
+   - `docs/GOVERNANCE.md`
    - `docs/l5/L5_OPERATING_POLICY.md`
    - `docs/l5/SYSTEM_MUTATION_RULES.md`
    - `docs/l5/AGENT_REWRITE_LOG.md`
+5. Product traceability:
+   - `docs/V1_TRACEABILITY.md`
 
 ## Runtime Mapping
 
@@ -43,3 +46,5 @@ Every implementation PR must include:
 ## L5 Gate
 
 L5 proposals may improve the engineering workflow, but they must not directly change product behavior, database schema, deployment, authentication, or architecture without L4 approval.
+
+L4 approval is defined in `docs/GOVERNANCE.md`.
