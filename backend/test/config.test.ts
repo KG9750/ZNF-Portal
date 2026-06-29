@@ -11,6 +11,14 @@ test("loadConfig applies defaults", () => {
   });
 });
 
+test("loadConfig allows port zero for temporary test servers", () => {
+  assert.equal(loadConfig({ PORT: "0" }).port, 0);
+});
+
 test("loadConfig rejects invalid ports", () => {
-  assert.throws(() => loadConfig({ PORT: "invalid" }), /PORT must be a positive integer/);
+  assert.throws(() => loadConfig({ PORT: "invalid" }), /PORT must be zero or a positive integer/);
+});
+
+test("loadConfig rejects empty database URLs", () => {
+  assert.throws(() => loadConfig({ DATABASE_URL: "" }), /DATABASE_URL must not be empty/);
 });

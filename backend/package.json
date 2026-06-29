@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "lint": "tsc --noEmit",
-    "build": "DATABASE_URL=file:./dev.db prisma validate && tsc -p tsconfig.build.json",
+    "build": "DATABASE_URL=file:./dev.db prisma validate && prisma generate && tsc -p tsconfig.build.json",
     "test": "node --test --import tsx test/*.test.ts",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",

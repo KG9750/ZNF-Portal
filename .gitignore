@@ -3,4 +3,6 @@ dist/
 .env
 
 backend/dist/
+backend/prisma/*.db
+backend/prisma/*.db-journal
 frontend/dist/
