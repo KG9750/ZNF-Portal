@@ -23,6 +23,8 @@
 
 ## Codex Development Rules
 
+See: docs/GIT_CODEx_STANDARDS.md
+
 Codex must follow:
 1. Do not introduce CRM / ERP / IoT systems
 2. Do not merge booking types
