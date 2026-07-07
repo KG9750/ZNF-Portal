@@ -16,6 +16,9 @@ import { createVisitBookingService } from "./modules/visit-booking/visit-booking
 import { createVisitRecordRepository } from "./modules/visit-record/visit-record.repository.js";
 import { createVisitRecordRouter } from "./modules/visit-record/visit-record.router.js";
 import { createVisitRecordService } from "./modules/visit-record/visit-record.service.js";
+import { createWorkOrderRepository } from "./modules/work-order/work-order.repository.js";
+import { createWorkOrderRouter } from "./modules/work-order/work-order.router.js";
+import { createWorkOrderService } from "./modules/work-order/work-order.service.js";
 import { createZoneBookingRepository } from "./modules/zone-booking/zone-booking.repository.js";
 import { createZoneBookingRouter } from "./modules/zone-booking/zone-booking.router.js";
 import { createZoneBookingService } from "./modules/zone-booking/zone-booking.service.js";
@@ -36,6 +39,7 @@ export function createApp(config: BackendConfig, prisma?: PrismaClient): Express
     app.use(createDeviceBookingRouter(createDeviceBookingService(createDeviceBookingRepository(prisma))));
     app.use(createVisitBookingRouter(createVisitBookingService(createVisitBookingRepository(prisma))));
     app.use(createVisitRecordRouter(createVisitRecordService(createVisitRecordRepository(prisma))));
+    app.use(createWorkOrderRouter(createWorkOrderService(createWorkOrderRepository(prisma))));
   }
 
   app.use(errorHandler);
