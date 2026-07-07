@@ -48,6 +48,7 @@ test("Prisma schema maps database tables and columns to snake case", async () =>
   assert.match(schema, /currentZoneId\s+String\s+@map\("current_zone_id"\)/);
   assert.match(schema, /startTime\s+DateTime\s+@map\("start_time"\)/);
   assert.match(schema, /visitorOrg\s+String\s+@map\("visitor_org"\)/);
+  assert.match(schema, /status\s+BookingStatus\s+@default\(RESERVED\)/);
   assert.match(schema, /needDemo\s+Boolean\s+@default\(false\)\s+@map\("need_demo"\)/);
 });
 
