@@ -83,9 +83,23 @@ model VisitBooking {
   status       BookingStatus @default(RESERVED)
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
+  visitRecord  VisitRecord?
 
   @@index([startTime, endTime])
   @@map("visit_booking")
+}
+
+model VisitRecord {
+  id                 String       @id @default(uuid())
+  visitBookingId     String       @unique @map("visit_booking_id")
+  actualStartTime    DateTime     @map("actual_start_time")
+  actualEndTime      DateTime     @map("actual_end_time")
+  actualVisitorCount Int          @map("actual_visitor_count")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  visitBooking       VisitBooking @relation(fields: [visitBookingId], references: [id])
+
+  @@map("visit_record")
 }
 
 model WorkOrder {
