@@ -80,6 +80,7 @@ model VisitBooking {
   visitorOrg   String        @map("visitor_org")
   visitorCount Int           @map("visitor_count")
   needDemo     Boolean       @default(false) @map("need_demo")
+  status       BookingStatus @default(RESERVED)
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
