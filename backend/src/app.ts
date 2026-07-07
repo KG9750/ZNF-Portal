@@ -10,6 +10,9 @@ import { createDeviceRepository } from "./modules/device/device.repository.js";
 import { createDeviceRouter } from "./modules/device/device.router.js";
 import { createDeviceService } from "./modules/device/device.service.js";
 import { createHealthRouter } from "./modules/health/health.router.js";
+import { createInquiryRecordRepository } from "./modules/inquiry-record/inquiry-record.repository.js";
+import { createInquiryRecordRouter } from "./modules/inquiry-record/inquiry-record.router.js";
+import { createInquiryRecordService } from "./modules/inquiry-record/inquiry-record.service.js";
 import { createVisitBookingRepository } from "./modules/visit-booking/visit-booking.repository.js";
 import { createVisitBookingRouter } from "./modules/visit-booking/visit-booking.router.js";
 import { createVisitBookingService } from "./modules/visit-booking/visit-booking.service.js";
@@ -40,6 +43,7 @@ export function createApp(config: BackendConfig, prisma?: PrismaClient): Express
     app.use(createVisitBookingRouter(createVisitBookingService(createVisitBookingRepository(prisma))));
     app.use(createVisitRecordRouter(createVisitRecordService(createVisitRecordRepository(prisma))));
     app.use(createWorkOrderRouter(createWorkOrderService(createWorkOrderRepository(prisma))));
+    app.use(createInquiryRecordRouter(createInquiryRecordService(createInquiryRecordRepository(prisma))));
   }
 
   app.use(errorHandler);

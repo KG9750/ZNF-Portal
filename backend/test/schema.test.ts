@@ -54,6 +54,7 @@ test("Prisma schema maps database tables and columns to snake case", async () =>
   assert.match(schema, /actualStartTime\s+DateTime\s+@map\("actual_start_time"\)/);
   assert.match(schema, /actualEndTime\s+DateTime\s+@map\("actual_end_time"\)/);
   assert.match(schema, /actualVisitorCount\s+Int\s+@map\("actual_visitor_count"\)/);
+  assert.match(schema, /model InquiryRecord \{[\s\S]*?note\s+String\s+@default\(""\)/);
   assert.match(schema, /status\s+BookingStatus\s+@default\(RESERVED\)/);
   assert.match(schema, /needDemo\s+Boolean\s+@default\(false\)\s+@map\("need_demo"\)/);
 });
@@ -61,7 +62,7 @@ test("Prisma schema maps database tables and columns to snake case", async () =>
 test("Prisma schema keeps future task fields out of completed backend tasks", async () => {
   const schema = await readFile(schemaPath, "utf8");
 
-  assert.doesNotMatch(schema, /note\s+String/);
+  assert.doesNotMatch(schema, /salesStage/);
 });
 
 test("Prisma schema includes conflict-oriented booking indexes", async () => {
