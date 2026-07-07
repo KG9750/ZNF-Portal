@@ -3,6 +3,9 @@ import type { PrismaClient } from "@prisma/client";
 
 import type { BackendConfig } from "./config/env.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { createDashboardRepository } from "./modules/dashboard/dashboard.repository.js";
+import { createDashboardRouter } from "./modules/dashboard/dashboard.router.js";
+import { createDashboardService } from "./modules/dashboard/dashboard.service.js";
 import { createDeviceBookingRepository } from "./modules/device-booking/device-booking.repository.js";
 import { createDeviceBookingRouter } from "./modules/device-booking/device-booking.router.js";
 import { createDeviceBookingService } from "./modules/device-booking/device-booking.service.js";
@@ -36,6 +39,7 @@ export function createApp(config: BackendConfig, prisma?: PrismaClient): Express
   app.use(createHealthRouter(config));
 
   if (prisma !== undefined) {
+    app.use(createDashboardRouter(createDashboardService(createDashboardRepository(prisma))));
     app.use(createZoneRouter(createZoneService(createZoneRepository(prisma))));
     app.use(createDeviceRouter(createDeviceService(createDeviceRepository(prisma))));
     app.use(createZoneBookingRouter(createZoneBookingService(createZoneBookingRepository(prisma))));
