@@ -52,5 +52,6 @@ CREATE TABLE inquiry_record (
   id UUID PRIMARY KEY,
   org_name TEXT,
   contact TEXT,
-  source TEXT
+  source TEXT,
+  note TEXT DEFAULT ''
 );

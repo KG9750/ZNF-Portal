@@ -123,6 +123,7 @@ model InquiryRecord {
   orgName   String   @map("org_name")
   contact   String
   source    String
+  note      String   @default("")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
