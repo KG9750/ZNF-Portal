@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 
 import { AppShell } from "./components/AppShell.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
+import { DevicePage } from "./pages/DevicePage.js";
 import { ZonePage } from "./pages/ZonePage.js";
 
 export const APP_TITLE = "ZNF-Portal";
 
 export const navigationItems = [
   { label: "Dashboard", path: "/" },
-  { label: "Zones", path: "/zones" }
+  { label: "Zones", path: "/zones" },
+  { label: "Devices", path: "/devices" }
 ] as const;
 
 export function App() {
@@ -33,9 +35,21 @@ export function App() {
       onNavigate={path => navigateTo(path, setCurrentPath)}
       title={APP_TITLE}
     >
-      {currentPath === "/zones" ? <ZonePage /> : <DashboardPage />}
+      {renderPage(currentPath)}
     </AppShell>
   );
+}
+
+function renderPage(currentPath: string) {
+  if (currentPath === "/zones") {
+    return <ZonePage />;
+  }
+
+  if (currentPath === "/devices") {
+    return <DevicePage />;
+  }
+
+  return <DashboardPage />;
 }
 
 function getCurrentPath(): string {
