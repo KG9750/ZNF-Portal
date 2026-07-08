@@ -3,9 +3,26 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=18.20"
+  },
   "scripts": {
-    "lint": "node --check src/app.js && node --check test/app.test.js && node --check scripts/build.js",
-    "build": "node scripts/build.js",
-    "test": "node --test"
+    "dev": "vite",
+    "lint": "tsc --noEmit",
+    "build": "vite build",
+    "test": "node --test --import tsx test/*.test.ts"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@types/node": "^18.19.130",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.23.0",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.3"
   }
 }
