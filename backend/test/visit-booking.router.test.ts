@@ -154,6 +154,52 @@ test("VisitBooking router returns validation and missing-booking errors", async 
   }
 });
 
+test("VisitBooking router returns conflict errors for overlapping visits", async () => {
+  const app = express();
+  const service = new VisitBookingService(createMemoryVisitBookingRepository());
+
+  app.use(express.json());
+  app.use(createVisitBookingRouter(service));
+
+  const server = app.listen(0);
+
+  try {
+    const baseUrl = getBaseUrl(server);
+
+    await fetch(`${baseUrl}/visit-bookings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        startTime: "2026-01-01T10:00:00.000Z",
+        endTime: "2026-01-01T11:00:00.000Z",
+        visitorOrg: "Acme Labs",
+        visitorCount: 12
+      })
+    });
+
+    const conflictResponse = await fetch(`${baseUrl}/visit-bookings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        startTime: "2026-01-01T10:30:00.000Z",
+        endTime: "2026-01-01T11:30:00.000Z",
+        visitorOrg: "Overlap Labs",
+        visitorCount: 4
+      })
+    });
+    const conflict = await conflictResponse.json() as { error: string };
+
+    assert.equal(conflictResponse.status, 409);
+    assert.equal(conflict.error, "Visit booking conflicts with existing reservation");
+  } finally {
+    await closeServer(server);
+  }
+});
+
 function getBaseUrl(server: ReturnType<typeof express.application.listen>): string {
   const address = server.address();
 

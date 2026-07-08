@@ -48,6 +48,69 @@ test("ConflictService treats adjacent time windows as available", async () => {
   assert.equal(hasConflict, false);
 });
 
+test("ConflictService detects overlapping Visit time windows", async () => {
+  const service = new ConflictService(
+    createMemoryConflictRepository({
+      visitBookings: [
+        {
+          startTime: new Date("2026-01-01T10:00:00.000Z"),
+          endTime: new Date("2026-01-01T11:00:00.000Z")
+        }
+      ]
+    })
+  );
+
+  const hasConflict = await service.hasVisitConflict({
+    startTime: "2026-01-01T10:30:00.000Z",
+    endTime: "2026-01-01T11:30:00.000Z"
+  });
+
+  assert.equal(hasConflict, true);
+});
+
+test("ConflictService ignores cancelled Visit time windows", async () => {
+  const service = new ConflictService(
+    createMemoryConflictRepository({
+      visitBookings: [
+        {
+          status: "CANCELLED",
+          startTime: new Date("2026-01-01T10:00:00.000Z"),
+          endTime: new Date("2026-01-01T11:00:00.000Z")
+        }
+      ]
+    })
+  );
+
+  const hasConflict = await service.hasVisitConflict({
+    startTime: new Date("2026-01-01T10:30:00.000Z"),
+    endTime: new Date("2026-01-01T11:30:00.000Z")
+  });
+
+  assert.equal(hasConflict, false);
+});
+
+test("ConflictService blocks conflicting Visit writes", async () => {
+  const service = new ConflictService(
+    createMemoryConflictRepository({
+      visitBookings: [
+        {
+          startTime: new Date("2026-01-01T10:00:00.000Z"),
+          endTime: new Date("2026-01-01T11:00:00.000Z")
+        }
+      ]
+    })
+  );
+
+  await assert.rejects(
+    () =>
+      service.assertVisitAvailable({
+        startTime: new Date("2026-01-01T10:30:00.000Z"),
+        endTime: new Date("2026-01-01T11:30:00.000Z")
+      }),
+    /Visit booking conflicts with existing reservation/
+  );
+});
+
 test("ConflictService treats upper-bound adjacency as available", async () => {
   const service = new ConflictService(
     createMemoryConflictRepository({

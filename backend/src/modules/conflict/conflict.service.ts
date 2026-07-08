@@ -30,6 +30,10 @@ export class ConflictService implements ConflictWriteGuard {
     return this.repository.hasDeviceConflict(parseDeviceConflictInput(input));
   }
 
+  async hasVisitConflict(input: unknown): Promise<boolean> {
+    return this.repository.hasVisitConflict(readTimeWindow(readRecord(input)));
+  }
+
   async assertZoneAvailable(input: unknown): Promise<void> {
     const data = parseZoneConflictInput(input);
 
@@ -43,6 +47,14 @@ export class ConflictService implements ConflictWriteGuard {
 
     if (await this.repository.hasDeviceConflict(data)) {
       throw new BookingConflictError("Device booking conflicts with existing reservation");
+    }
+  }
+
+  async assertVisitAvailable(input: unknown): Promise<void> {
+    const data = readTimeWindow(readRecord(input));
+
+    if (await this.repository.hasVisitConflict(data)) {
+      throw new BookingConflictError("Visit booking conflicts with existing reservation");
     }
   }
 }

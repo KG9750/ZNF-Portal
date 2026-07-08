@@ -1,5 +1,6 @@
 import { BookingStatus, type VisitBooking } from "@prisma/client";
 
+import { BookingConflictError } from "../../src/modules/conflict/conflict.service.js";
 import type {
   CreateVisitBookingInput,
   VisitBookingRepository
@@ -10,6 +11,10 @@ export function createMemoryVisitBookingRepository(): VisitBookingRepository {
 
   return {
     async create(input: CreateVisitBookingInput) {
+      if (hasConflict([...bookings.values()], input)) {
+        throw new BookingConflictError("Visit booking conflicts with existing reservation");
+      }
+
       const now = new Date();
       const booking: VisitBooking = {
         id: `visit-booking-${bookings.size + 1}`,
@@ -50,4 +55,13 @@ export function createMemoryVisitBookingRepository(): VisitBookingRepository {
       return cancelled;
     }
   };
+}
+
+function hasConflict(bookings: VisitBooking[], input: CreateVisitBookingInput): boolean {
+  return bookings.some(
+    booking =>
+      booking.status === BookingStatus.RESERVED &&
+      input.startTime < booking.endTime &&
+      input.endTime > booking.startTime
+  );
 }

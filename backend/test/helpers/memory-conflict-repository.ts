@@ -15,14 +15,20 @@ interface MemoryDeviceBooking extends TimeWindowInput {
   status?: "RESERVED" | "CANCELLED";
 }
 
+interface MemoryVisitBooking extends TimeWindowInput {
+  status?: "RESERVED" | "CANCELLED";
+}
+
 interface MemoryConflictRepositoryOptions {
   zoneBookings?: MemoryZoneBooking[];
   deviceBookings?: MemoryDeviceBooking[];
+  visitBookings?: MemoryVisitBooking[];
 }
 
 export function createMemoryConflictRepository(options: MemoryConflictRepositoryOptions = {}): ConflictRepository {
   const zoneBookings = options.zoneBookings ?? [];
   const deviceBookings = options.deviceBookings ?? [];
+  const visitBookings = options.visitBookings ?? [];
 
   return {
     async hasZoneConflict(input: ZoneConflictInput) {
@@ -38,6 +44,14 @@ export function createMemoryConflictRepository(options: MemoryConflictRepository
       return deviceBookings.some(
         booking =>
           booking.deviceId === input.deviceId &&
+          (booking.status ?? "RESERVED") === "RESERVED" &&
+          input.startTime < booking.endTime &&
+          input.endTime > booking.startTime
+      );
+    },
+    async hasVisitConflict(input: TimeWindowInput) {
+      return visitBookings.some(
+        booking =>
           (booking.status ?? "RESERVED") === "RESERVED" &&
           input.startTime < booking.endTime &&
           input.endTime > booking.startTime
