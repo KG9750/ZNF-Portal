@@ -1,4 +1,4 @@
-import { createApiUrl } from "./api.js";
+import { isRecord, requestJson, type ApiRequestOptions } from "./api.js";
 
 export type BookingStatus = "RESERVED" | "CANCELLED";
 export type DeviceStatus = "AVAILABLE" | "IN_USE" | "FAULT" | "MAINTENANCE";
@@ -57,22 +57,8 @@ export interface DashboardOverview {
   pendingWorkOrders: WorkOrder[];
 }
 
-interface DashboardRequestOptions {
-  apiFetch?: typeof fetch;
-  signal?: AbortSignal;
-}
-
-export async function getDashboardOverview(options: DashboardRequestOptions = {}): Promise<DashboardOverview> {
-  const apiFetch = options.apiFetch ?? fetch;
-  const response = await apiFetch(createApiUrl("/dashboard"), {
-    signal: options.signal
-  });
-
-  if (!response.ok) {
-    throw new Error(await createDashboardRequestError(response));
-  }
-
-  return parseDashboardOverview(await response.json());
+export async function getDashboardOverview(options: ApiRequestOptions = {}): Promise<DashboardOverview> {
+  return parseDashboardOverview(await requestJson("/dashboard", "Dashboard API request failed", options));
 }
 
 function parseDashboardOverview(value: unknown): DashboardOverview {
@@ -233,28 +219,4 @@ function parseWorkOrderType(value: unknown, fieldName: string): WorkOrderType {
   }
 
   throw new Error(`Dashboard API response field ${fieldName} is invalid`);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-async function createDashboardRequestError(response: Response): Promise<string> {
-  const fallback = `Dashboard API request failed: ${response.status}`;
-
-  try {
-    const body = await response.json() as unknown;
-
-    if (isRecord(body) && typeof body.error === "string") {
-      return `${fallback} - ${body.error}`;
-    }
-
-    if (isRecord(body) && typeof body.message === "string") {
-      return `${fallback} - ${body.message}`;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
 }

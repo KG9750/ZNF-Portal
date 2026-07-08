@@ -1,4 +1,4 @@
-import { createApiUrl } from "./api.js";
+import { isRecord, requestJson, type ApiRequestOptions } from "./api.js";
 
 export type DeviceStatus = "AVAILABLE" | "IN_USE" | "FAULT" | "MAINTENANCE";
 
@@ -13,22 +13,8 @@ export interface Device {
   updatedAt: string;
 }
 
-interface ApiRequestOptions {
-  apiFetch?: typeof fetch;
-  signal?: AbortSignal;
-}
-
 export async function getDevices(options: ApiRequestOptions = {}): Promise<Device[]> {
-  const apiFetch = options.apiFetch ?? fetch;
-  const response = await apiFetch(createApiUrl("/devices"), {
-    signal: options.signal
-  });
-
-  if (!response.ok) {
-    throw new Error(await createDeviceRequestError(response));
-  }
-
-  return parseArray(await response.json(), "devices", parseDevice);
+  return parseArray(await requestJson("/devices", "Device API request failed", options), "devices", parseDevice);
 }
 
 function parseDevice(value: unknown, fieldName: string): Device {
@@ -76,30 +62,4 @@ function parseDeviceStatus(value: unknown, fieldName: string): DeviceStatus {
   }
 
   throw new Error(`${fieldName} API response is invalid`);
-}
-
-async function createDeviceRequestError(response: Response): Promise<string> {
-  const fallback = `Device API request failed: ${response.status}`;
-
-  try {
-    const body = await response.json() as unknown;
-
-    if (isRecord(body)) {
-      if (typeof body.error === "string") {
-        return `${fallback} - ${body.error}`;
-      }
-
-      if (typeof body.message === "string") {
-        return `${fallback} - ${body.message}`;
-      }
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

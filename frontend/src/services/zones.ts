@@ -1,4 +1,4 @@
-import { createApiUrl } from "./api.js";
+import { isRecord, requestJson, type ApiRequestOptions } from "./api.js";
 
 export type ZoneStatus = "ACTIVE" | "INACTIVE";
 export type BookingStatus = "RESERVED" | "CANCELLED";
@@ -20,11 +20,6 @@ export interface ZoneBooking {
   status: BookingStatus;
 }
 
-interface ApiRequestOptions {
-  apiFetch?: typeof fetch;
-  signal?: AbortSignal;
-}
-
 export async function getZones(options: ApiRequestOptions = {}): Promise<Zone[]> {
   return parseArray(await requestJson("/zones", "Zone API request failed", options), "zones", parseZone);
 }
@@ -35,19 +30,6 @@ export async function getZoneBookings(options: ApiRequestOptions = {}): Promise<
     "zoneBookings",
     parseZoneBooking
   );
-}
-
-async function requestJson(path: string, errorPrefix: string, options: ApiRequestOptions): Promise<unknown> {
-  const apiFetch = options.apiFetch ?? fetch;
-  const response = await apiFetch(createApiUrl(path), {
-    signal: options.signal
-  });
-
-  if (!response.ok) {
-    throw new Error(await createApiRequestError(response, errorPrefix));
-  }
-
-  return await response.json() as unknown;
 }
 
 function parseZone(value: unknown, fieldName: string): Zone {
@@ -113,30 +95,4 @@ function parseBookingStatus(value: unknown, fieldName: string): BookingStatus {
   }
 
   throw new Error(`${fieldName} API response is invalid`);
-}
-
-async function createApiRequestError(response: Response, prefix: string): Promise<string> {
-  const fallback = `${prefix}: ${response.status}`;
-
-  try {
-    const body = await response.json() as unknown;
-
-    if (isRecord(body)) {
-      if (typeof body.error === "string") {
-        return `${fallback} - ${body.error}`;
-      }
-
-      if (typeof body.message === "string") {
-        return `${fallback} - ${body.message}`;
-      }
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
