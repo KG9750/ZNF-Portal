@@ -5,24 +5,95 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { APP_TITLE, navigationItems } from "../src/app.js";
 import { DashboardContent } from "../src/pages/DashboardPage.js";
+import { ZoneContent } from "../src/pages/ZonePage.js";
 import { createApiUrl } from "../src/services/api.js";
 import { getDashboardOverview, type DashboardOverview } from "../src/services/dashboard.js";
+import { getZoneBookings, getZones } from "../src/services/zones.js";
 
 test("frontend scaffold exposes React app metadata", () => {
   assert.equal(APP_TITLE, "ZNF-Portal");
   assert.deepEqual(
     navigationItems.map(item => item.path),
-    ["/"]
+    ["/", "/zones"]
   );
   assert.deepEqual(
     navigationItems.map(item => item.label),
-    ["Dashboard"]
+    ["Dashboard", "Zones"]
   );
 });
 
 test("frontend service layer builds backend API URLs", () => {
   assert.equal(createApiUrl("/health"), "/health");
   assert.equal(createApiUrl("/health", "https://api.example.test"), "https://api.example.test/health");
+});
+
+test("zone services fetch zones and zone bookings", async () => {
+  const requests: string[] = [];
+  const apiFetch: typeof fetch = async input => {
+    requests.push(input.toString());
+
+    if (input.toString() === "/zones") {
+      return new Response(
+        JSON.stringify([
+          {
+            id: "zone-1",
+            name: "Training Bay",
+            type: "LAB",
+            status: "ACTIVE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ]),
+        { status: 200 }
+      );
+    }
+
+    return new Response(
+      JSON.stringify([
+        {
+          id: "zone-booking-1",
+          zoneId: "zone-1",
+          startTime: "2026-01-01T00:00:00.000Z",
+          endTime: "2026-01-01T01:00:00.000Z",
+          status: "RESERVED"
+        }
+      ]),
+      { status: 200 }
+    );
+  };
+
+  const zones = await getZones({ apiFetch });
+  const zoneBookings = await getZoneBookings({ apiFetch });
+
+  assert.deepEqual(requests, ["/zones", "/zone-bookings"]);
+  assert.equal(zones[0]?.name, "Training Bay");
+  assert.equal(zoneBookings[0]?.zoneId, "zone-1");
+});
+
+test("zone service rejects malformed responses", async () => {
+  await assert.rejects(
+    getZones({ apiFetch: async () => new Response(JSON.stringify([{ id: 123 }]), { status: 200 }) }),
+    /zones\[0\]\.id API response is invalid/
+  );
+
+  await assert.rejects(
+    getZoneBookings({
+      apiFetch: async () =>
+        new Response(
+          JSON.stringify([
+            {
+              id: "zone-booking-1",
+              zoneId: "zone-1",
+              startTime: "2026-01-01T00:00:00.000Z",
+              endTime: "2026-01-01T01:00:00.000Z",
+              status: "ACTIVE"
+            }
+          ]),
+          { status: 200 }
+        )
+    }),
+    /zoneBookings\[0\]\.status API response is invalid/
+  );
 });
 
 test("dashboard service fetches overview from backend API", async () => {
@@ -144,6 +215,82 @@ test("dashboard content renders overview data", () => {
   assert.match(markup, /Arm Station 1/);
   assert.match(markup, /故障设备/);
   assert.match(markup, /工单状态/);
+});
+
+test("zone content renders list, detail, and current bookings", () => {
+  const markup = renderToStaticMarkup(
+    createElement(ZoneContent, {
+      state: {
+        status: "ready",
+        zones: [
+          {
+            id: "zone-1",
+            name: "Training Bay",
+            type: "LAB",
+            status: "ACTIVE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        zoneBookings: [
+          {
+            id: "zone-booking-1",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T00:00:00.000Z",
+            endTime: "2999-01-01T00:00:00.000Z",
+            status: "RESERVED"
+          },
+          {
+            id: "zone-booking-2",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T00:00:00.000Z",
+            endTime: "2999-01-01T00:00:00.000Z",
+            status: "CANCELLED"
+          }
+        ],
+        selectedZoneId: "zone-1",
+        error: null
+      },
+      onSelectZone: () => undefined
+    })
+  );
+
+  assert.match(markup, /Zone列表/);
+  assert.match(markup, /Zone详情/);
+  assert.match(markup, /当前预约/);
+  assert.match(markup, /Training Bay/);
+  assert.match(markup, /zone-booking-1/);
+  assert.doesNotMatch(markup, /zone-booking-2/);
+});
+
+test("zone content renders loading and error states", () => {
+  const loadingMarkup = renderToStaticMarkup(
+    createElement(ZoneContent, {
+      state: {
+        status: "loading",
+        zones: [],
+        zoneBookings: [],
+        selectedZoneId: null,
+        error: null
+      },
+      onSelectZone: () => undefined
+    })
+  );
+  const errorMarkup = renderToStaticMarkup(
+    createElement(ZoneContent, {
+      state: {
+        status: "error",
+        zones: [],
+        zoneBookings: [],
+        selectedZoneId: null,
+        error: "Zone API request failed: 500"
+      },
+      onSelectZone: () => undefined
+    })
+  );
+
+  assert.match(loadingMarkup, /Loading zone data/);
+  assert.match(errorMarkup, /Zone API request failed: 500/);
 });
 
 function createDashboardOverview(overrides: Partial<DashboardOverview> = {}): DashboardOverview {
