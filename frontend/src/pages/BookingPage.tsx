@@ -1,5 +1,7 @@
 import { type Dispatch, type FormEvent, useEffect, useMemo, useState, type ReactNode, type SetStateAction } from "react";
 
+import { StatusBadge } from "../components/StatusBadge.js";
+import { Timeline } from "../components/Timeline.js";
 import {
   cancelVisitBooking,
   cancelZoneBooking,
@@ -133,7 +135,7 @@ export function BookingContent({
           <div className="booking-management-grid">
             <BookingPanel count={state.zoneBookings.length} title="ZoneBooking">
               <ZoneBookingForm onSubmit={onCreateZone} zones={state.zones} />
-              <TimelineList
+              <Timeline
                 emptyLabel="No zone bookings"
                 items={sortByStartTime(state.zoneBookings)}
                 renderItem={booking => (
@@ -155,7 +157,7 @@ export function BookingContent({
 
             <BookingPanel count={state.deviceBookings.length} title="DeviceBooking">
               <DeviceBookingForm devices={state.devices} onSubmit={onCreateDevice} zones={state.zones} />
-              <TimelineList
+              <Timeline
                 emptyLabel="No device bookings"
                 items={sortByStartTime(state.deviceBookings)}
                 renderItem={booking => (
@@ -177,7 +179,7 @@ export function BookingContent({
 
             <BookingPanel count={state.visitBookings.length} title="VisitBooking">
               <VisitBookingForm onSubmit={onCreateVisit} />
-              <TimelineList
+              <Timeline
                 emptyLabel="No visit bookings"
                 items={sortByStartTime(state.visitBookings)}
                 renderItem={booking => (
@@ -316,28 +318,6 @@ function TimeFields() {
   );
 }
 
-function TimelineList<TItem extends { id: string }>({
-  emptyLabel,
-  items,
-  renderItem
-}: {
-  emptyLabel: string;
-  items: TItem[];
-  renderItem: (item: TItem) => ReactNode;
-}) {
-  if (items.length === 0) {
-    return <p className="empty-state">{emptyLabel}</p>;
-  }
-
-  return (
-    <ul className="timeline-list">
-      {items.map(item => (
-        <li key={item.id}>{renderItem(item)}</li>
-      ))}
-    </ul>
-  );
-}
-
 function BookingActions({
   canCancel,
   disabledLabel,
@@ -352,10 +332,6 @@ function BookingActions({
       {canCancel ? "Cancel" : disabledLabel}
     </button>
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`status-badge status-${status.toLowerCase()}`}>{status.replaceAll("_", " ")}</span>;
 }
 
 async function loadBookingSnapshot(signal?: AbortSignal): Promise<BookingSnapshot> {

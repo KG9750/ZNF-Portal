@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type ReactElement } from "react";
 
+import { StatusBadge } from "../components/StatusBadge.js";
+import { Table, type TableColumn } from "../components/Table.js";
+import { Timeline } from "../components/Timeline.js";
 import {
   getDashboardOverview,
   type DashboardOverview,
@@ -14,6 +17,12 @@ type DashboardState =
   | { status: "loading"; data: null; error: null }
   | { status: "ready"; data: DashboardOverview; error: null }
   | { status: "error"; data: null; error: string };
+
+const faultDeviceColumns: Array<TableColumn<Device>> = [
+  { header: "Device", key: "name", render: device => device.name },
+  { header: "Type", key: "type", render: device => device.type },
+  { header: "Current Zone", key: "currentZone", render: device => device.currentZoneId }
+];
 
 export function DashboardPage() {
   const [state, setState] = useState<DashboardState>({
@@ -174,35 +183,19 @@ function BookingList<TBooking extends ZoneBooking | DeviceBooking | VisitBooking
   return (
     <section className="booking-list">
       <h3>{title}</h3>
-      {items.length === 0 ? (
-        <p className="empty-state">{emptyLabel}</p>
-      ) : (
-        <ul className="data-list">
-          {items.map(item => (
-            <li key={item.id}>{renderItem(item)}</li>
-          ))}
-        </ul>
-      )}
+      <Timeline className="data-list" emptyLabel={emptyLabel} items={items} renderItem={renderItem} />
     </section>
   );
 }
 
 function DeviceStatusList({ devices }: { devices: Device[] }) {
-  if (devices.length === 0) {
-    return <p className="empty-state">No fault devices</p>;
-  }
-
   return (
-    <ul className="data-list">
-      {devices.map(device => (
-        <li key={device.id}>
-          <strong>{device.name}</strong>
-          <span>
-            {device.type} · current zone {device.currentZoneId}
-          </span>
-        </li>
-      ))}
-    </ul>
+    <Table
+      columns={faultDeviceColumns}
+      emptyLabel="No fault devices"
+      rowKey={device => device.id}
+      rows={devices}
+    />
   );
 }
 
@@ -226,10 +219,6 @@ function WorkOrderStatusList({ workOrders }: { workOrders: WorkOrder[] }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`status-badge status-${status.toLowerCase()}`}>{formatStatus(status)}</span>;
-}
-
 function formatTimeRange(startTime: string, endTime: string): string {
   return `${formatTime(startTime)} - ${formatTime(endTime)}`;
 }
@@ -245,10 +234,6 @@ function formatTime(value: string): string {
     hour: "2-digit",
     minute: "2-digit"
   }).format(date);
-}
-
-function formatStatus(status: string): string {
-  return status.replaceAll("_", " ");
 }
 
 function formatWorkOrderTarget(workOrder: WorkOrder): string {

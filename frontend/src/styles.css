@@ -507,6 +507,37 @@ p {
   font-size: 14px;
 }
 
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  color: #111827;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  border-top: 1px solid #eef1f5;
+  padding: 10px 0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table tr:first-child th,
+.data-table tr:first-child td {
+  border-top: 0;
+}
+
+.data-table th {
+  width: 112px;
+  color: #697586;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.data-table td {
+  overflow-wrap: anywhere;
+}
+
 .status-active,
 .status-reserved {
   border-color: #9fd6b5;
@@ -573,4 +604,10 @@ p {
     gap: 4px;
   }
 
+  .data-table th,
+  .data-table td {
+    display: block;
+    width: auto;
+    padding: 6px 0;
+  }
 }
