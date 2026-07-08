@@ -5,8 +5,10 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { APP_TITLE, navigationItems } from "../src/app.js";
 import { DashboardContent } from "../src/pages/DashboardPage.js";
+import { DeviceContent } from "../src/pages/DevicePage.js";
 import { ZoneContent } from "../src/pages/ZonePage.js";
 import { createApiUrl } from "../src/services/api.js";
+import { getDevices } from "../src/services/devices.js";
 import { getDashboardOverview, type DashboardOverview } from "../src/services/dashboard.js";
 import { getZoneBookings, getZones } from "../src/services/zones.js";
 
@@ -14,11 +16,11 @@ test("frontend scaffold exposes React app metadata", () => {
   assert.equal(APP_TITLE, "ZNF-Portal");
   assert.deepEqual(
     navigationItems.map(item => item.path),
-    ["/", "/zones"]
+    ["/", "/zones", "/devices"]
   );
   assert.deepEqual(
     navigationItems.map(item => item.label),
-    ["Dashboard", "Zones"]
+    ["Dashboard", "Zones", "Devices"]
   );
 });
 
@@ -68,6 +70,57 @@ test("zone services fetch zones and zone bookings", async () => {
   assert.deepEqual(requests, ["/zones", "/zone-bookings"]);
   assert.equal(zones[0]?.name, "Training Bay");
   assert.equal(zoneBookings[0]?.zoneId, "zone-1");
+});
+
+test("device service fetches devices", async () => {
+  const requests: string[] = [];
+  const devices = await getDevices({
+    apiFetch: async input => {
+      requests.push(input.toString());
+
+      return new Response(
+        JSON.stringify([
+          {
+            id: "device-1",
+            name: "Arm Station",
+            type: "ROBOT_ARM",
+            homeZoneId: "zone-1",
+            currentZoneId: "zone-2",
+            status: "IN_USE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ]),
+        { status: 200 }
+      );
+    }
+  });
+
+  assert.deepEqual(requests, ["/devices"]);
+  assert.equal(devices[0]?.name, "Arm Station");
+  assert.equal(devices[0]?.currentZoneId, "zone-2");
+});
+
+test("device service rejects malformed responses", async () => {
+  await assert.rejects(
+    getDevices({ apiFetch: async () => new Response(JSON.stringify([{ id: "device-1", status: "ACTIVE" }]), { status: 200 }) }),
+    /devices\[0\]\.name API response is invalid/
+  );
+});
+
+test("device service reports failed requests", async () => {
+  await assert.rejects(
+    getDevices({ apiFetch: async () => new Response(JSON.stringify({ error: "Device store unavailable" }), { status: 503 }) }),
+    /Device API request failed: 503 - Device store unavailable/
+  );
+  await assert.rejects(
+    getDevices({ apiFetch: async () => new Response(JSON.stringify({ message: "Forbidden" }), { status: 403 }) }),
+    /Device API request failed: 403 - Forbidden/
+  );
+  await assert.rejects(
+    getDevices({ apiFetch: async () => new Response("Unavailable", { status: 500 }) }),
+    /Device API request failed: 500/
+  );
 });
 
 test("zone service rejects malformed responses", async () => {
@@ -291,6 +344,86 @@ test("zone content renders loading and error states", () => {
 
   assert.match(loadingMarkup, /Loading zone data/);
   assert.match(errorMarkup, /Zone API request failed: 500/);
+});
+
+test("device content renders list, status, and zone details", () => {
+  const markup = renderToStaticMarkup(
+    createElement(DeviceContent, {
+      state: {
+        status: "ready",
+        devices: [
+          {
+            id: "device-1",
+            name: "Arm Station",
+            type: "ROBOT_ARM",
+            homeZoneId: "zone-1",
+            currentZoneId: "zone-2",
+            status: "IN_USE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        zones: [
+          {
+            id: "zone-1",
+            name: "Home Bay",
+            type: "LAB",
+            status: "ACTIVE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          },
+          {
+            id: "zone-2",
+            name: "Training Bay",
+            type: "LAB",
+            status: "ACTIVE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        selectedDeviceId: "device-1",
+        error: null
+      },
+      onSelectDevice: () => undefined
+    })
+  );
+
+  assert.match(markup, /Device列表/);
+  assert.match(markup, /Device详情/);
+  assert.match(markup, /Arm Station/);
+  assert.match(markup, /IN USE/);
+  assert.match(markup, /Training Bay \(zone-2\)/);
+  assert.match(markup, /Home Bay \(zone-1\)/);
+});
+
+test("device content renders loading and error states", () => {
+  const loadingMarkup = renderToStaticMarkup(
+    createElement(DeviceContent, {
+      state: {
+        status: "loading",
+        devices: [],
+        zones: [],
+        selectedDeviceId: null,
+        error: null
+      },
+      onSelectDevice: () => undefined
+    })
+  );
+  const errorMarkup = renderToStaticMarkup(
+    createElement(DeviceContent, {
+      state: {
+        status: "error",
+        devices: [],
+        zones: [],
+        selectedDeviceId: null,
+        error: "Device API request failed: 500"
+      },
+      onSelectDevice: () => undefined
+    })
+  );
+
+  assert.match(loadingMarkup, /Loading device data/);
+  assert.match(errorMarkup, /Device API request failed: 500/);
 });
 
 function createDashboardOverview(overrides: Partial<DashboardOverview> = {}): DashboardOverview {

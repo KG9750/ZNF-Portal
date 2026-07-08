@@ -35,10 +35,31 @@ test("Device router exposes create, list, detail, and status update endpoints", 
     assert.equal(created.homeZoneId, "zone-1");
 
     const listResponse = await fetch(`${baseUrl}/devices`);
-    const devices = await listResponse.json() as Array<{ id: string }>;
+    const devices = await listResponse.json() as Array<{
+      id: string;
+      name: string;
+      type: string;
+      homeZoneId: string;
+      currentZoneId: string;
+      status: string;
+      createdAt: string;
+      updatedAt: string;
+    }>;
 
     assert.equal(listResponse.status, 200);
     assert.equal(devices.length, 1);
+    assert.deepEqual(Object.keys(devices[0] ?? {}).sort(), [
+      "createdAt",
+      "currentZoneId",
+      "homeZoneId",
+      "id",
+      "name",
+      "status",
+      "type",
+      "updatedAt"
+    ]);
+    assert.equal(devices[0]?.name, "Microscope");
+    assert.equal(devices[0]?.currentZoneId, "zone-2");
 
     const detailResponse = await fetch(`${baseUrl}/devices/${created.id}`);
     const detail = await detailResponse.json() as { id: string };
