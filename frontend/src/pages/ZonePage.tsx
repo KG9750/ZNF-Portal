@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { StatusBadge } from "../components/StatusBadge.js";
+import { Timeline } from "../components/Timeline.js";
 import { getZoneBookings, getZones, type Zone, type ZoneBooking } from "../services/zones.js";
 
 type ZonePageState =
@@ -175,27 +177,22 @@ function ZoneDetail({ zone }: { zone: Zone | null }) {
 }
 
 function CurrentBookingList({ bookings }: { bookings: ZoneBooking[] }) {
-  if (bookings.length === 0) {
-    return <p className="empty-state">No current bookings</p>;
-  }
-
   return (
-    <ul className="data-list">
-      {bookings.map(booking => (
-        <li key={booking.id}>
+    <Timeline
+      className="data-list"
+      emptyLabel="No current bookings"
+      items={bookings}
+      renderItem={booking => (
+        <>
           <div className="row-with-badge">
             <strong>{booking.id}</strong>
             <StatusBadge status={booking.status} />
           </div>
           <span>{formatTimeRange(booking.startTime, booking.endTime)}</span>
-        </li>
-      ))}
-    </ul>
+        </>
+      )}
+    />
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`status-badge status-${status.toLowerCase()}`}>{status.replaceAll("_", " ")}</span>;
 }
 
 function getCurrentZoneBookings(bookings: ZoneBooking[], selectedZoneId: string | null, now: Date): ZoneBooking[] {

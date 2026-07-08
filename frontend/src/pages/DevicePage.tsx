@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { StatusBadge } from "../components/StatusBadge.js";
 import { getDevices, type Device } from "../services/devices.js";
 import { getZones, type Zone } from "../services/zones.js";
 
@@ -181,10 +182,6 @@ function DeviceDetail({ device, zoneById }: { device: Device | null; zoneById: M
       </div>
     </dl>
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  return <span className={`status-badge status-${status.toLowerCase()}`}>{status.replaceAll("_", " ")}</span>;
 }
 
 function setSelectedDevice(

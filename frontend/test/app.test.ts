@@ -4,6 +4,9 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { APP_TITLE, navigationItems } from "../src/app.js";
+import { StatusBadge } from "../src/components/StatusBadge.js";
+import { Table } from "../src/components/Table.js";
+import { Timeline } from "../src/components/Timeline.js";
 import { BookingContent } from "../src/pages/BookingPage.js";
 import { DashboardContent } from "../src/pages/DashboardPage.js";
 import { DeviceContent } from "../src/pages/DevicePage.js";
@@ -38,6 +41,61 @@ test("frontend scaffold exposes React app metadata", () => {
 test("frontend service layer builds backend API URLs", () => {
   assert.equal(createApiUrl("/health"), "/health");
   assert.equal(createApiUrl("/health", "https://api.example.test"), "https://api.example.test/health");
+});
+
+test("shared UI components render badges, timelines, and tables", () => {
+  interface TimelineRow {
+    id: string;
+    label: string;
+  }
+
+  interface TableRow {
+    label: string;
+    value: string;
+  }
+
+  const badgeMarkup = renderToStaticMarkup(createElement(StatusBadge, { status: "IN_PROGRESS" }));
+  const timelineMarkup = renderToStaticMarkup(
+    createElement(Timeline<TimelineRow>, {
+      emptyLabel: "No events",
+      items: [{ id: "event-1", label: "Booked" }],
+      renderItem: item => createElement("strong", null, item.label)
+    })
+  );
+  const emptyTimelineMarkup = renderToStaticMarkup(
+    createElement(Timeline<TimelineRow>, {
+      emptyLabel: "No events",
+      items: [],
+      renderItem: () => null
+    })
+  );
+  const customTimelineMarkup = renderToStaticMarkup(
+    createElement(Timeline<TimelineRow>, {
+      className: "data-list",
+      emptyLabel: "No events",
+      items: [{ id: "event-2", label: "Checked in" }],
+      renderItem: item => createElement("span", null, item.label)
+    })
+  );
+  const tableMarkup = renderToStaticMarkup(
+    createElement(Table<TableRow>, {
+      columns: [
+        { header: "Field", key: "field", render: row => row.label },
+        { header: "Value", key: "value", render: row => row.value }
+      ],
+      emptyLabel: "No rows",
+      rows: [{ label: "Status", value: "ACTIVE" }],
+      rowKey: row => row.label
+    })
+  );
+
+  assert.match(badgeMarkup, /IN PROGRESS/);
+  assert.match(badgeMarkup, /status-in_progress/);
+  assert.match(timelineMarkup, /Booked/);
+  assert.match(emptyTimelineMarkup, /No events/);
+  assert.match(customTimelineMarkup, /class="data-list"/);
+  assert.match(tableMarkup, /Status/);
+  assert.match(tableMarkup, /ACTIVE/);
 });
 
 test("API client sends JSON bodies and normalizes error responses", async () => {
