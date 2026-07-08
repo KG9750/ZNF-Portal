@@ -4,10 +4,21 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { APP_TITLE, navigationItems } from "../src/app.js";
+import { BookingContent } from "../src/pages/BookingPage.js";
 import { DashboardContent } from "../src/pages/DashboardPage.js";
 import { DeviceContent } from "../src/pages/DevicePage.js";
 import { ZoneContent } from "../src/pages/ZonePage.js";
 import { createApiUrl } from "../src/services/api.js";
+import {
+  cancelVisitBooking,
+  cancelZoneBooking,
+  createDeviceBooking,
+  createVisitBooking,
+  createZoneBooking,
+  getDeviceBookings,
+  getZoneBookings as getBookingZoneBookings,
+  getVisitBookings
+} from "../src/services/bookings.js";
 import { getDevices } from "../src/services/devices.js";
 import { getDashboardOverview, type DashboardOverview } from "../src/services/dashboard.js";
 import { getZoneBookings, getZones } from "../src/services/zones.js";
@@ -16,11 +27,11 @@ test("frontend scaffold exposes React app metadata", () => {
   assert.equal(APP_TITLE, "ZNF-Portal");
   assert.deepEqual(
     navigationItems.map(item => item.path),
-    ["/", "/zones", "/devices"]
+    ["/", "/zones", "/devices", "/bookings"]
   );
   assert.deepEqual(
     navigationItems.map(item => item.label),
-    ["Dashboard", "Zones", "Devices"]
+    ["Dashboard", "Zones", "Devices", "Bookings"]
   );
 });
 
@@ -120,6 +131,264 @@ test("device service reports failed requests", async () => {
   await assert.rejects(
     getDevices({ apiFetch: async () => new Response("Unavailable", { status: 500 }) }),
     /Device API request failed: 500/
+  );
+});
+
+test("booking services fetch, create, and cancel bookings", async () => {
+  const requests: Array<{ body?: string; method: string; path: string }> = [];
+  const apiFetch: typeof fetch = async (input, init) => {
+    const path = input.toString();
+    const method = init?.method ?? "GET";
+    requests.push({
+      body: typeof init?.body === "string" ? init.body : undefined,
+      method,
+      path
+    });
+
+    if (path === "/zone-bookings" && method === "GET") {
+      return jsonResponse([
+        {
+          id: "zone-booking-1",
+          zoneId: "zone-1",
+          startTime: "2026-01-01T00:00:00.000Z",
+          endTime: "2026-01-01T01:00:00.000Z",
+          status: "RESERVED"
+        }
+      ]);
+    }
+
+    if (path === "/device-bookings" && method === "GET") {
+      return jsonResponse([
+        {
+          id: "device-booking-1",
+          deviceId: "device-1",
+          zoneId: "zone-1",
+          startTime: "2026-01-01T00:00:00.000Z",
+          endTime: "2026-01-01T01:00:00.000Z",
+          status: "RESERVED"
+        }
+      ]);
+    }
+
+    if (path === "/visit-bookings" && method === "GET") {
+      return jsonResponse([
+        {
+          id: "visit-booking-1",
+          startTime: "2026-01-01T00:00:00.000Z",
+          endTime: "2026-01-01T01:00:00.000Z",
+          visitorOrg: "Acme Labs",
+          visitorCount: 3,
+          needDemo: true,
+          status: "RESERVED"
+        }
+      ]);
+    }
+
+    if (path === "/zone-bookings/zone-booking-1/cancel") {
+      return jsonResponse({
+        id: "zone-booking-1",
+        zoneId: "zone-1",
+        startTime: "2026-01-01T00:00:00.000Z",
+        endTime: "2026-01-01T01:00:00.000Z",
+        status: "CANCELLED"
+      });
+    }
+
+    if (path === "/visit-bookings/visit-booking-1/cancel") {
+      return jsonResponse({
+        id: "visit-booking-1",
+        startTime: "2026-01-01T00:00:00.000Z",
+        endTime: "2026-01-01T01:00:00.000Z",
+        visitorOrg: "Acme Labs",
+        visitorCount: 3,
+        needDemo: true,
+        status: "CANCELLED"
+      });
+    }
+
+    if (path === "/device-bookings" && method === "POST") {
+      return jsonResponse({
+        id: "device-booking-2",
+        deviceId: "device-1",
+        zoneId: "zone-1",
+        startTime: "2026-01-01T02:00:00.000Z",
+        endTime: "2026-01-01T03:00:00.000Z",
+        status: "RESERVED"
+      }, 201);
+    }
+
+    if (path === "/visit-bookings" && method === "POST") {
+      return jsonResponse({
+        id: "visit-booking-2",
+        startTime: "2026-01-01T02:00:00.000Z",
+        endTime: "2026-01-01T03:00:00.000Z",
+        visitorOrg: "Acme Labs",
+        visitorCount: 3,
+        needDemo: false,
+        status: "RESERVED"
+      }, 201);
+    }
+
+    return jsonResponse({
+      id: "zone-booking-2",
+      zoneId: "zone-1",
+      startTime: "2026-01-01T02:00:00.000Z",
+      endTime: "2026-01-01T03:00:00.000Z",
+      status: "RESERVED"
+    }, 201);
+  };
+
+  const zoneBookings = await getBookingZoneBookings({ apiFetch });
+  const deviceBookings = await getDeviceBookings({ apiFetch });
+  const visitBookings = await getVisitBookings({ apiFetch });
+  await createZoneBooking({ zoneId: "zone-1", startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00" }, { apiFetch });
+  await createDeviceBooking(
+    { deviceId: "device-1", zoneId: "zone-1", startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00" },
+    { apiFetch }
+  );
+  await createVisitBooking(
+    { startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00", visitorOrg: "Acme Labs", visitorCount: 3, needDemo: false },
+    { apiFetch }
+  );
+  await cancelZoneBooking("zone-booking-1", { apiFetch });
+  await cancelVisitBooking("visit-booking-1", { apiFetch });
+
+  assert.equal(zoneBookings[0]?.zoneId, "zone-1");
+  assert.equal(deviceBookings[0]?.deviceId, "device-1");
+  assert.equal(visitBookings[0]?.visitorOrg, "Acme Labs");
+  assert.deepEqual(
+    requests.map(request => `${request.method} ${request.path}`),
+    [
+      "GET /zone-bookings",
+      "GET /device-bookings",
+      "GET /visit-bookings",
+      "POST /zone-bookings",
+      "POST /device-bookings",
+      "POST /visit-bookings",
+      "PATCH /zone-bookings/zone-booking-1/cancel",
+      "PATCH /visit-bookings/visit-booking-1/cancel"
+    ]
+  );
+});
+
+test("booking services report failed requests", async () => {
+  await assert.rejects(
+    createZoneBooking(
+      { zoneId: "zone-1", startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00" },
+      { apiFetch: async () => jsonResponse({ error: "booking conflict" }, 409) }
+    ),
+    /ZoneBooking API request failed: 409 - booking conflict/
+  );
+
+  await assert.rejects(
+    getVisitBookings({ apiFetch: async () => new Response("Unavailable", { status: 503 }) }),
+    /VisitBooking API request failed: 503/
+  );
+});
+
+test("booking services reject malformed responses", async () => {
+  await assert.rejects(
+    getBookingZoneBookings({ apiFetch: async () => jsonResponse([{ id: 123 }]) }),
+    /zoneBookings\[0\]\.id API response is invalid/
+  );
+
+  await assert.rejects(
+    createZoneBooking(
+      { zoneId: "zone-1", startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00" },
+      {
+        apiFetch: async () =>
+          jsonResponse({
+            id: "zone-booking-1",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            status: "ACTIVE"
+          }, 201)
+      }
+    ),
+    /zoneBooking\.status API response is invalid/
+  );
+
+  await assert.rejects(
+    getDeviceBookings({
+      apiFetch: async () =>
+        jsonResponse([
+          {
+            id: "device-booking-1",
+            deviceId: "device-1",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            status: "ACTIVE"
+          }
+        ])
+    }),
+    /deviceBookings\[0\]\.status API response is invalid/
+  );
+
+  await assert.rejects(
+    createDeviceBooking(
+      { deviceId: "device-1", zoneId: "zone-1", startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00" },
+      {
+        apiFetch: async () =>
+          jsonResponse({
+            id: "device-booking-1",
+            deviceId: 123,
+            zoneId: "zone-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            status: "RESERVED"
+          }, 201)
+      }
+    ),
+    /deviceBooking\.deviceId API response is invalid/
+  );
+
+  await assert.rejects(
+    getVisitBookings({
+      apiFetch: async () =>
+        jsonResponse([
+          {
+            id: "visit-booking-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            visitorOrg: "Acme Labs",
+            visitorCount: "3",
+            needDemo: true,
+            status: "RESERVED"
+          }
+        ])
+    }),
+    /visitBookings\[0\]\.visitorCount API response is invalid/
+  );
+
+  await assert.rejects(
+    createVisitBooking(
+      { startTime: "2026-01-01T02:00", endTime: "2026-01-01T03:00", visitorOrg: "Acme Labs", visitorCount: 3, needDemo: false },
+      {
+        apiFetch: async () =>
+          jsonResponse({
+            id: "visit-booking-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            visitorOrg: "Acme Labs",
+            visitorCount: 3,
+            needDemo: "false",
+            status: "RESERVED"
+          }, 201)
+      }
+    ),
+    /visitBooking\.needDemo API response is invalid/
+  );
+
+  await assert.rejects(
+    cancelZoneBooking("zone-booking-1", { apiFetch: async () => jsonResponse({ id: "zone-booking-1" }) }),
+    /zoneBooking\.zoneId API response is invalid/
+  );
+
+  await assert.rejects(
+    cancelVisitBooking("visit-booking-1", { apiFetch: async () => jsonResponse({ id: "visit-booking-1" }) }),
+    /visitBooking\.startTime API response is invalid/
   );
 });
 
@@ -426,6 +695,146 @@ test("device content renders loading and error states", () => {
   assert.match(errorMarkup, /Device API request failed: 500/);
 });
 
+test("booking content renders create forms and timeline data", () => {
+  const markup = renderToStaticMarkup(
+    createElement(BookingContent, {
+      state: {
+        status: "ready",
+        zones: [
+          {
+            id: "zone-1",
+            name: "Training Bay",
+            type: "LAB",
+            status: "ACTIVE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        devices: [
+          {
+            id: "device-1",
+            name: "Arm Station",
+            type: "ROBOT_ARM",
+            homeZoneId: "zone-1",
+            currentZoneId: "zone-1",
+            status: "AVAILABLE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        zoneBookings: [
+          {
+            id: "zone-booking-1",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            status: "RESERVED"
+          }
+        ],
+        deviceBookings: [
+          {
+            id: "device-booking-1",
+            deviceId: "device-1",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T03:00:00.000Z",
+            endTime: "2026-01-01T04:00:00.000Z",
+            status: "RESERVED"
+          }
+        ],
+        visitBookings: [
+          {
+            id: "visit-booking-1",
+            startTime: "2026-01-01T04:00:00.000Z",
+            endTime: "2026-01-01T05:00:00.000Z",
+            visitorOrg: "Acme Labs",
+            visitorCount: 5,
+            needDemo: true,
+            status: "CANCELLED"
+          }
+        ],
+        error: null,
+        message: "Zone booking created"
+      },
+      onCancelVisit: () => undefined,
+      onCancelZone: () => undefined,
+      onCreateDevice: event => event.preventDefault(),
+      onCreateVisit: event => event.preventDefault(),
+      onCreateZone: event => event.preventDefault()
+    })
+  );
+
+  assert.match(markup, /ZoneBooking/);
+  assert.match(markup, /DeviceBooking/);
+  assert.match(markup, /VisitBooking/);
+  assert.match(markup, /Training Bay \(zone-1\)/);
+  assert.match(markup, /Arm Station \(device-1\)/);
+  assert.match(markup, /Acme Labs/);
+  assert.match(markup, /Cancel API unavailable/);
+  assert.match(markup, /Zone booking created/);
+});
+
+test("booking content renders loading and error states", () => {
+  const loadingMarkup = renderToStaticMarkup(
+    createElement(BookingContent, {
+      state: {
+        status: "loading",
+        zones: [],
+        devices: [],
+        zoneBookings: [],
+        deviceBookings: [],
+        visitBookings: [],
+        error: null,
+        message: null
+      },
+      onCancelVisit: () => undefined,
+      onCancelZone: () => undefined,
+      onCreateDevice: event => event.preventDefault(),
+      onCreateVisit: event => event.preventDefault(),
+      onCreateZone: event => event.preventDefault()
+    })
+  );
+  const errorMarkup = renderToStaticMarkup(
+    createElement(BookingContent, {
+      state: {
+        status: "error",
+        zones: [
+          {
+            id: "zone-1",
+            name: "Training Bay",
+            type: "LAB",
+            status: "ACTIVE",
+            createdAt: "2026-01-01T00:00:00.000Z",
+            updatedAt: "2026-01-01T00:00:00.000Z"
+          }
+        ],
+        devices: [],
+        zoneBookings: [
+          {
+            id: "zone-booking-1",
+            zoneId: "zone-1",
+            startTime: "2026-01-01T02:00:00.000Z",
+            endTime: "2026-01-01T03:00:00.000Z",
+            status: "RESERVED"
+          }
+        ],
+        deviceBookings: [],
+        visitBookings: [],
+        error: "Booking API request failed",
+        message: null
+      },
+      onCancelVisit: () => undefined,
+      onCancelZone: () => undefined,
+      onCreateDevice: event => event.preventDefault(),
+      onCreateVisit: event => event.preventDefault(),
+      onCreateZone: event => event.preventDefault()
+    })
+  );
+
+  assert.match(loadingMarkup, /Loading booking data/);
+  assert.match(errorMarkup, /Booking API request failed/);
+  assert.match(errorMarkup, /Training Bay \(zone-1\)/);
+});
+
 function createDashboardOverview(overrides: Partial<DashboardOverview> = {}): DashboardOverview {
   return {
     todayZoneBookings: [],
@@ -435,4 +844,13 @@ function createDashboardOverview(overrides: Partial<DashboardOverview> = {}): Da
     pendingWorkOrders: [],
     ...overrides
   };
+}
+
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    headers: {
+      "content-type": "application/json"
+    },
+    status
+  });
 }

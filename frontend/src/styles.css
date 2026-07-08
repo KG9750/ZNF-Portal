@@ -272,12 +272,23 @@ p {
   background: #fff4f2;
 }
 
+.success-notice {
+  border-color: #9fd6b5;
+  color: #166534;
+  background: #ecfdf3;
+}
+
 .zone-page {
   display: grid;
   gap: 22px;
 }
 
 .device-page {
+  display: grid;
+  gap: 22px;
+}
+
+.booking-page {
   display: grid;
   gap: 22px;
 }
@@ -292,6 +303,111 @@ p {
   display: grid;
   grid-template-columns: minmax(260px, 380px) minmax(0, 1fr);
   gap: 16px;
+}
+
+.booking-management-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.booking-panel {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.booking-form {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #eef1f5;
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.booking-form label {
+  display: grid;
+  gap: 5px;
+  color: #475467;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.booking-form input,
+.booking-form select {
+  min-width: 0;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  padding: 8px 9px;
+  color: #111827;
+  background: #ffffff;
+  font: inherit;
+}
+
+.checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checkbox-field input {
+  width: 16px;
+  height: 16px;
+}
+
+.primary-button,
+.text-button {
+  border: 1px solid #8bb8ef;
+  border-radius: 6px;
+  padding: 8px 10px;
+  color: #174ea6;
+  background: #f1f7ff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.text-button {
+  justify-self: start;
+  border-color: #cfd6df;
+  color: #344054;
+  background: #ffffff;
+}
+
+.primary-button:disabled,
+.text-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.timeline-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.timeline-list li {
+  display: grid;
+  gap: 7px;
+  border-left: 3px solid #8bb8ef;
+  border-radius: 6px;
+  padding: 10px 0 10px 12px;
+  color: #475467;
+  font-size: 13px;
+}
+
+.timeline-list strong,
+.timeline-list span {
+  overflow-wrap: anywhere;
+}
+
+.timeline-list strong {
+  color: #111827;
+  font-size: 14px;
 }
 
 .zone-list-panel {
@@ -446,6 +562,7 @@ p {
   .metric-grid,
   .dashboard-grid,
   .booking-columns,
+  .booking-management-grid,
   .zone-layout,
   .device-layout {
     grid-template-columns: 1fr;

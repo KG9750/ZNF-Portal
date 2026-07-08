@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { AppShell } from "./components/AppShell.js";
+import { BookingPage } from "./pages/BookingPage.js";
 import { DashboardPage } from "./pages/DashboardPage.js";
 import { DevicePage } from "./pages/DevicePage.js";
 import { ZonePage } from "./pages/ZonePage.js";
@@ -10,7 +11,8 @@ export const APP_TITLE = "ZNF-Portal";
 export const navigationItems = [
   { label: "Dashboard", path: "/" },
   { label: "Zones", path: "/zones" },
-  { label: "Devices", path: "/devices" }
+  { label: "Devices", path: "/devices" },
+  { label: "Bookings", path: "/bookings" }
 ] as const;
 
 export function App() {
@@ -47,6 +49,10 @@ function renderPage(currentPath: string) {
 
   if (currentPath === "/devices") {
     return <DevicePage />;
+  }
+
+  if (currentPath === "/bookings") {
+    return <BookingPage />;
   }
 
   return <DashboardPage />;
