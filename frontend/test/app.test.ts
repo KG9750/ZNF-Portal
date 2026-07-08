@@ -8,7 +8,7 @@ import { BookingContent } from "../src/pages/BookingPage.js";
 import { DashboardContent } from "../src/pages/DashboardPage.js";
 import { DeviceContent } from "../src/pages/DevicePage.js";
 import { ZoneContent } from "../src/pages/ZonePage.js";
-import { createApiUrl } from "../src/services/api.js";
+import { createApiUrl, requestJson } from "../src/services/api.js";
 import {
   cancelVisitBooking,
   cancelZoneBooking,
@@ -38,6 +38,74 @@ test("frontend scaffold exposes React app metadata", () => {
 test("frontend service layer builds backend API URLs", () => {
   assert.equal(createApiUrl("/health"), "/health");
   assert.equal(createApiUrl("/health", "https://api.example.test"), "https://api.example.test/health");
+});
+
+test("API client sends JSON bodies and normalizes error responses", async () => {
+  const requests: Array<{ body?: string; contentType: string | null; method: string; path: string }> = [];
+  const getResult = await requestJson("/example", "Example API request failed", {
+    apiFetch: async (input, init) => {
+      requests.push({
+        body: typeof init?.body === "string" ? init.body : undefined,
+        contentType: readContentType(init?.headers),
+        method: init?.method ?? "GET",
+        path: input.toString()
+      });
+
+      return jsonResponse({ items: [] });
+    }
+  });
+  const result = await requestJson("/example", "Example API request failed", {
+    apiFetch: async (input, init) => {
+      requests.push({
+        body: typeof init?.body === "string" ? init.body : undefined,
+        contentType: readContentType(init?.headers),
+        method: init?.method ?? "GET",
+        path: input.toString()
+      });
+
+      return jsonResponse({ ok: true });
+    },
+    body: { name: "Training Bay" },
+    method: "POST"
+  });
+
+  await assert.rejects(
+    requestJson("/example", "Example API request failed", {
+      apiFetch: async () => jsonResponse({ message: "Nope" }, 418)
+    }),
+    /Example API request failed: 418 - Nope/
+  );
+
+  await assert.rejects(
+    requestJson("/example", "Example API request failed", {
+      apiFetch: async () => jsonResponse({ error: "No access" }, 403)
+    }),
+    /Example API request failed: 403 - No access/
+  );
+
+  await assert.rejects(
+    requestJson("/example", "Example API request failed", {
+      apiFetch: async () => new Response("Nope", { status: 502 })
+    }),
+    /Example API request failed: 502/
+  );
+
+  assert.deepEqual(getResult, { items: [] });
+  assert.deepEqual(result, { ok: true });
+  assert.deepEqual(requests, [
+    {
+      body: undefined,
+      contentType: null,
+      method: "GET",
+      path: "/example"
+    },
+    {
+      body: "{\"name\":\"Training Bay\"}",
+      contentType: "application/json",
+      method: "POST",
+      path: "/example"
+    }
+  ]);
 });
 
 test("zone services fetch zones and zone bookings", async () => {
@@ -853,4 +921,16 @@ function jsonResponse(body: unknown, status = 200): Response {
     },
     status
   });
+}
+
+function readContentType(headers: HeadersInit | undefined): string | null {
+  if (headers instanceof Headers) {
+    return headers.get("content-type");
+  }
+
+  if (Array.isArray(headers)) {
+    return new Headers(headers).get("content-type");
+  }
+
+  return headers?.["Content-Type"] ?? headers?.["content-type"] ?? null;
 }

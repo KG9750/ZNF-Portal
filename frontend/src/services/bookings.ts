@@ -1,4 +1,4 @@
-import { createApiUrl } from "./api.js";
+import { isRecord, requestJson, type ApiRequestOptions } from "./api.js";
 
 export type BookingStatus = "RESERVED" | "CANCELLED";
 
@@ -48,11 +48,6 @@ export interface CreateVisitBookingInput {
   visitorOrg: string;
   visitorCount: number;
   needDemo: boolean;
-}
-
-interface ApiRequestOptions {
-  apiFetch?: typeof fetch;
-  signal?: AbortSignal;
 }
 
 interface MutationOptions {
@@ -134,26 +129,6 @@ export async function cancelVisitBooking(id: string, options: MutationOptions = 
     }),
     "visitBooking"
   );
-}
-
-async function requestJson(
-  path: string,
-  errorPrefix: string,
-  options: ApiRequestOptions & { body?: unknown; method?: string }
-): Promise<unknown> {
-  const apiFetch = options.apiFetch ?? fetch;
-  const response = await apiFetch(createApiUrl(path), {
-    body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    headers: options.body === undefined ? undefined : { "Content-Type": "application/json" },
-    method: options.method ?? "GET",
-    signal: options.signal
-  });
-
-  if (!response.ok) {
-    throw new Error(await createApiRequestError(response, errorPrefix));
-  }
-
-  return await response.json() as unknown;
 }
 
 function parseZoneBooking(value: unknown, fieldName: string): ZoneBooking {
@@ -241,30 +216,4 @@ function parseBookingStatus(value: unknown, fieldName: string): BookingStatus {
   }
 
   throw new Error(`${fieldName} API response is invalid`);
-}
-
-async function createApiRequestError(response: Response, prefix: string): Promise<string> {
-  const fallback = `${prefix}: ${response.status}`;
-
-  try {
-    const body = await response.json() as unknown;
-
-    if (isRecord(body)) {
-      if (typeof body.error === "string") {
-        return `${fallback} - ${body.error}`;
-      }
-
-      if (typeof body.message === "string") {
-        return `${fallback} - ${body.message}`;
-      }
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
