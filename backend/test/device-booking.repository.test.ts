@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BookingStatus, PrismaClient } from "@prisma/client";
+import { BookingStatus, PrismaClient, type DeviceBooking } from "@prisma/client";
 
 import { BookingConflictError } from "../src/modules/conflict/conflict.service.js";
 import { createDeviceBookingRepository } from "../src/modules/device-booking/device-booking.repository.js";
@@ -56,8 +56,90 @@ test("DeviceBookingRepository creates, rejects conflicts, validates binding, and
       BookingConflictError
     );
 
-    assert.equal(await countDeviceBookings(prisma), 1);
+    const adjacent = await repository.create({
+      deviceId: "device-1",
+      zoneId: "zone-1",
+      startTime: new Date("2026-01-01T11:00:00.000Z"),
+      endTime: new Date("2026-01-01T12:00:00.000Z")
+    });
+
+    assert.equal(adjacent?.status, BookingStatus.RESERVED);
+    assert.equal(await countDeviceBookings(prisma), 2);
   } finally {
+    await prisma.$disconnect();
+    await rm(dbDir, { recursive: true, force: true });
+  }
+});
+
+test("DeviceBookingRepository serializes concurrent overlapping creates", async () => {
+  const dbDir = await mkdtemp(join(tmpdir(), "znf-device-booking-concurrent-"));
+  const databaseUrl = `file:${join(dbDir, "test.db")}`;
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl
+      }
+    }
+  });
+  let secondPrisma: PrismaClient | null = null;
+
+  try {
+    await createTables(prisma);
+    await seedDevice(prisma);
+
+    secondPrisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: databaseUrl
+        }
+      }
+    });
+    const repository = createDeviceBookingRepository(prisma);
+    const secondRepository = createDeviceBookingRepository(secondPrisma);
+    const results = await Promise.allSettled([
+      repository.create({
+        deviceId: "device-1",
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T10:00:00.000Z"),
+        endTime: new Date("2026-01-01T11:00:00.000Z")
+      }),
+      secondRepository.create({
+        deviceId: "device-1",
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T10:30:00.000Z"),
+        endTime: new Date("2026-01-01T11:30:00.000Z")
+      })
+    ]);
+    const adjacentResults = await Promise.allSettled([
+      repository.create({
+        deviceId: "device-1",
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T11:30:00.000Z"),
+        endTime: new Date("2026-01-01T12:30:00.000Z")
+      }),
+      secondRepository.create({
+        deviceId: "device-1",
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T12:30:00.000Z"),
+        endTime: new Date("2026-01-01T13:30:00.000Z")
+      })
+    ]);
+
+    const fulfilled = results.filter(isDeviceBookingFulfilled);
+    const rejected = results.filter(result => result.status === "rejected");
+    const adjacentFulfilled = adjacentResults.filter(isDeviceBookingFulfilled);
+
+    assert.equal(fulfilled.length, 1);
+    assert.notEqual(fulfilled[0]?.value, null);
+    assert.equal(fulfilled[0]?.value?.status, BookingStatus.RESERVED);
+    assert.equal(rejected.length, 1);
+    assert.ok(rejected[0]?.reason instanceof BookingConflictError);
+    assert.equal(adjacentFulfilled.length, 2);
+    assert.equal(adjacentFulfilled[0]?.value?.status, BookingStatus.RESERVED);
+    assert.equal(adjacentFulfilled[1]?.value?.status, BookingStatus.RESERVED);
+    assert.equal(await countDeviceBookings(prisma), 3);
+  } finally {
+    await secondPrisma?.$disconnect();
     await prisma.$disconnect();
     await rm(dbDir, { recursive: true, force: true });
   }
@@ -128,4 +210,10 @@ async function countDeviceBookings(prisma: PrismaClient): Promise<number> {
   const count = rows[0]?.count ?? 0;
 
   return typeof count === "bigint" ? Number(count) : count;
+}
+
+function isDeviceBookingFulfilled(
+  result: PromiseSettledResult<DeviceBooking | null>
+): result is PromiseFulfilledResult<DeviceBooking | null> {
+  return result.status === "fulfilled";
 }

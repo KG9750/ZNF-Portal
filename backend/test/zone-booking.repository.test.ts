@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { BookingStatus, PrismaClient } from "@prisma/client";
+import { BookingStatus, PrismaClient, type ZoneBooking } from "@prisma/client";
 
 import { BookingConflictError } from "../src/modules/conflict/conflict.service.js";
 import { createZoneBookingRepository } from "../src/modules/zone-booking/zone-booking.repository.js";
@@ -62,16 +62,102 @@ test("ZoneBookingRepository creates, rejects conflicts, lists, and cancels with 
       BookingConflictError
     );
 
+    const adjacent = await repository.create({
+      zoneId: "zone-1",
+      startTime: new Date("2026-01-01T11:00:00.000Z"),
+      endTime: new Date("2026-01-01T12:00:00.000Z")
+    });
     const rowCountAfterConflict = await countZoneBookings(prisma);
     const cancelled = await repository.cancel(booking?.id ?? "");
     const cancelledAgain = await repository.cancel(booking?.id ?? "");
     const missingCancel = await repository.cancel("missing");
 
-    assert.equal(rowCountAfterConflict, 1);
+    assert.equal(adjacent?.status, BookingStatus.RESERVED);
+    assert.equal(rowCountAfterConflict, 2);
     assert.equal(cancelled?.status, BookingStatus.CANCELLED);
     assert.equal(cancelledAgain?.updatedAt.getTime(), cancelled?.updatedAt.getTime());
     assert.equal(missingCancel, null);
   } finally {
+    await prisma.$disconnect();
+    await rm(dbDir, { recursive: true, force: true });
+  }
+});
+
+test("ZoneBookingRepository serializes concurrent overlapping creates", async () => {
+  const dbDir = await mkdtemp(join(tmpdir(), "znf-zone-booking-concurrent-"));
+  const databaseUrl = `file:${join(dbDir, "test.db")}`;
+  const prisma = new PrismaClient({
+    datasources: {
+      db: {
+        url: databaseUrl
+      }
+    }
+  });
+  let secondPrisma: PrismaClient | null = null;
+
+  try {
+    await createTables(prisma);
+    await prisma.$executeRaw`
+      INSERT INTO zone (id, name, type, status, created_at, updated_at)
+      VALUES (
+        'zone-1',
+        'Training Hall',
+        'LAB',
+        'ACTIVE',
+        ${new Date("2026-01-01T00:00:00.000Z")},
+        ${new Date("2026-01-01T00:00:00.000Z")}
+      )
+    `;
+
+    secondPrisma = new PrismaClient({
+      datasources: {
+        db: {
+          url: databaseUrl
+        }
+      }
+    });
+    const repository = createZoneBookingRepository(prisma);
+    const secondRepository = createZoneBookingRepository(secondPrisma);
+    const results = await Promise.allSettled([
+      repository.create({
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T10:00:00.000Z"),
+        endTime: new Date("2026-01-01T11:00:00.000Z")
+      }),
+      secondRepository.create({
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T10:30:00.000Z"),
+        endTime: new Date("2026-01-01T11:30:00.000Z")
+      })
+    ]);
+    const adjacentResults = await Promise.allSettled([
+      repository.create({
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T11:30:00.000Z"),
+        endTime: new Date("2026-01-01T12:30:00.000Z")
+      }),
+      secondRepository.create({
+        zoneId: "zone-1",
+        startTime: new Date("2026-01-01T12:30:00.000Z"),
+        endTime: new Date("2026-01-01T13:30:00.000Z")
+      })
+    ]);
+
+    const fulfilled = results.filter(isZoneBookingFulfilled);
+    const rejected = results.filter(result => result.status === "rejected");
+    const adjacentFulfilled = adjacentResults.filter(isZoneBookingFulfilled);
+
+    assert.equal(fulfilled.length, 1);
+    assert.notEqual(fulfilled[0]?.value, null);
+    assert.equal(fulfilled[0]?.value?.status, BookingStatus.RESERVED);
+    assert.equal(rejected.length, 1);
+    assert.ok(rejected[0]?.reason instanceof BookingConflictError);
+    assert.equal(adjacentFulfilled.length, 2);
+    assert.equal(adjacentFulfilled[0]?.value?.status, BookingStatus.RESERVED);
+    assert.equal(adjacentFulfilled[1]?.value?.status, BookingStatus.RESERVED);
+    assert.equal(await countZoneBookings(prisma), 3);
+  } finally {
+    await secondPrisma?.$disconnect();
     await prisma.$disconnect();
     await rm(dbDir, { recursive: true, force: true });
   }
@@ -109,4 +195,8 @@ async function countZoneBookings(prisma: PrismaClient): Promise<number> {
   const count = rows[0]?.count ?? 0;
 
   return typeof count === "bigint" ? Number(count) : count;
+}
+
+function isZoneBookingFulfilled(result: PromiseSettledResult<ZoneBooking | null>): result is PromiseFulfilledResult<ZoneBooking | null> {
+  return result.status === "fulfilled";
 }
