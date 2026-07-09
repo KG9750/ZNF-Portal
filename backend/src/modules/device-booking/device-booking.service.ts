@@ -2,6 +2,8 @@ import type { DeviceBooking } from "@prisma/client";
 
 import type { CreateDeviceBookingInput, DeviceBookingRepository } from "./device-booking.types.js";
 
+const TIMEZONE_AWARE_DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/i;
+
 export class DeviceBookingValidationError extends Error {
   constructor(message: string) {
     super(message);
@@ -70,16 +72,60 @@ function readRequiredDate(input: Record<string, unknown>, key: string): Date {
     value instanceof Date
       ? value
       : typeof value === "string" && value.trim() !== ""
-        ? new Date(value)
-        : typeof value === "number"
-          ? new Date(value)
-          : null;
+        ? readTimezoneAwareDate(value.trim(), key)
+        : null;
 
   if (date === null || Number.isNaN(date.getTime())) {
     throw new DeviceBookingValidationError(`${key} must be a valid date`);
   }
 
   return date;
+}
+
+function readTimezoneAwareDate(value: string, key: string): Date {
+  if (!hasTimezoneOffset(value)) {
+    throw new DeviceBookingValidationError(`${key} must include a timezone offset`);
+  }
+
+  const date = new Date(value);
+
+  if (!isValidTimezoneAwareDateTime(value) || Number.isNaN(date.getTime())) {
+    throw new DeviceBookingValidationError(`${key} must be a valid date`);
+  }
+
+  return date;
+}
+
+function hasTimezoneOffset(value: string): boolean {
+  return /T.*(?:Z|[+-]\d{2}:\d{2})$/i.test(value);
+}
+
+function isValidTimezoneAwareDateTime(value: string): boolean {
+  const match = TIMEZONE_AWARE_DATE_TIME_PATTERN.exec(value);
+
+  if (match === null) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = match[6] === undefined ? 0 : Number(match[6]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day &&
+    hour >= 0 &&
+    hour <= 23 &&
+    minute >= 0 &&
+    minute <= 59 &&
+    second >= 0 &&
+    second <= 59
+  );
 }
 
 function isRecord(input: unknown): input is Record<string, unknown> {

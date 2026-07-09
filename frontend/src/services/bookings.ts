@@ -1,5 +1,10 @@
 import { isRecord, requestJson, type ApiRequestOptions } from "./api.js";
 
+const VENUE_TIMEZONE_OFFSET = "+08:00";
+const EXPLICIT_TIMEZONE_PATTERN = /T.*(?:Z|[+-]\d{2}:\d{2})$/i;
+const DATETIME_LOCAL_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?$/;
+const TIMEZONE_AWARE_DATE_TIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/i;
+
 export type BookingStatus = "RESERVED" | "CANCELLED";
 
 export interface ZoneBooking {
@@ -66,7 +71,7 @@ export async function createZoneBooking(input: CreateZoneBookingInput, options: 
   return parseZoneBooking(
     await requestJson("/zone-bookings", "ZoneBooking API request failed", {
       apiFetch: options.apiFetch,
-      body: input,
+      body: normalizeZoneBookingInput(input),
       method: "POST"
     }),
     "zoneBooking"
@@ -95,7 +100,7 @@ export async function createDeviceBooking(input: CreateDeviceBookingInput, optio
   return parseDeviceBooking(
     await requestJson("/device-bookings", "DeviceBooking API request failed", {
       apiFetch: options.apiFetch,
-      body: input,
+      body: normalizeDeviceBookingInput(input),
       method: "POST"
     }),
     "deviceBooking"
@@ -114,7 +119,7 @@ export async function createVisitBooking(input: CreateVisitBookingInput, options
   return parseVisitBooking(
     await requestJson("/visit-bookings", "VisitBooking API request failed", {
       apiFetch: options.apiFetch,
-      body: input,
+      body: normalizeVisitBookingInput(input),
       method: "POST"
     }),
     "visitBooking"
@@ -128,6 +133,88 @@ export async function cancelVisitBooking(id: string, options: MutationOptions = 
       method: "PATCH"
     }),
     "visitBooking"
+  );
+}
+
+function normalizeZoneBookingInput(input: CreateZoneBookingInput): CreateZoneBookingInput {
+  return {
+    ...input,
+    endTime: toUtcIsoString(input.endTime),
+    startTime: toUtcIsoString(input.startTime)
+  };
+}
+
+function normalizeDeviceBookingInput(input: CreateDeviceBookingInput): CreateDeviceBookingInput {
+  return {
+    ...input,
+    endTime: toUtcIsoString(input.endTime),
+    startTime: toUtcIsoString(input.startTime)
+  };
+}
+
+function normalizeVisitBookingInput(input: CreateVisitBookingInput): CreateVisitBookingInput {
+  return {
+    ...input,
+    endTime: toUtcIsoString(input.endTime),
+    startTime: toUtcIsoString(input.startTime)
+  };
+}
+
+function toUtcIsoString(value: string): string {
+  const normalizedValue = EXPLICIT_TIMEZONE_PATTERN.test(value) ? value : toVenueTimeString(value);
+
+  if (!isValidBookingDateTime(normalizedValue)) {
+    throw new Error("booking time must be a valid ISO date-time");
+  }
+
+  const date = new Date(normalizedValue);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("booking time must be a valid ISO date-time");
+  }
+
+  return date.toISOString();
+}
+
+function toVenueTimeString(value: string): string {
+  const match = DATETIME_LOCAL_PATTERN.exec(value);
+
+  if (match === null) {
+    throw new Error("booking time must be datetime-local or include a timezone offset");
+  }
+
+  if (!hasValidDateTimeParts(match)) {
+    throw new Error("booking time must be a valid ISO date-time");
+  }
+
+  return `${value}${VENUE_TIMEZONE_OFFSET}`;
+}
+
+function isValidBookingDateTime(value: string): boolean {
+  const match = TIMEZONE_AWARE_DATE_TIME_PATTERN.exec(value);
+  return match !== null && hasValidDateTimeParts(match);
+}
+
+function hasValidDateTimeParts(match: RegExpExecArray): boolean {
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const hour = Number(match[4]);
+  const minute = Number(match[5]);
+  const second = match[6] === undefined ? 0 : Number(match[6]);
+
+  const date = new Date(Date.UTC(year, month - 1, day));
+
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day &&
+    hour >= 0 &&
+    hour <= 23 &&
+    minute >= 0 &&
+    minute <= 59 &&
+    second >= 0 &&
+    second <= 59
   );
 }
 

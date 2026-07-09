@@ -20,9 +20,58 @@ test("ZoneBookingService creates reservations with parsed time windows", async (
   assert.equal(booking.startTime.toISOString(), "2026-01-01T10:00:00.000Z");
 });
 
+test("ZoneBookingService accepts explicit timezone offsets", async () => {
+  const service = new ZoneBookingService(createMemoryZoneBookingRepository(["zone-1"]));
+
+  const booking = await service.create({
+    zoneId: "zone-1",
+    startTime: "2026-01-01T13:30:00+05:30",
+    endTime: "2026-01-01T05:00:00-05:00"
+  });
+
+  assert.equal(booking.startTime.toISOString(), "2026-01-01T08:00:00.000Z");
+  assert.equal(booking.endTime.toISOString(), "2026-01-01T10:00:00.000Z");
+});
+
 test("ZoneBookingService rejects invalid booking payloads", async () => {
   const service = new ZoneBookingService(createMemoryZoneBookingRepository());
 
+  await assert.rejects(
+    () =>
+      service.create({
+        zoneId: "zone-1",
+        startTime: "2026-01-01T10:00",
+        endTime: "2026-01-01T11:00"
+      }),
+    /startTime must include a timezone offset/
+  );
+  await assert.rejects(
+    () =>
+      service.create({
+        zoneId: "zone-1",
+        startTime: "2026-01-01T10:00:00.000Z",
+        endTime: "2026-01-01T11:00"
+      }),
+    /endTime must include a timezone offset/
+  );
+  await assert.rejects(
+    () =>
+      service.create({
+        zoneId: "zone-1",
+        startTime: 1767261600000,
+        endTime: "2026-01-01T11:00:00.000Z"
+      }),
+    /startTime must be a valid date/
+  );
+  await assert.rejects(
+    () =>
+      service.create({
+        zoneId: "zone-1",
+        startTime: "2026-02-31T10:00:00+08:00",
+        endTime: "2026-02-31T11:00:00+08:00"
+      }),
+    /startTime must be a valid date/
+  );
   await assert.rejects(
     () =>
       service.create({
