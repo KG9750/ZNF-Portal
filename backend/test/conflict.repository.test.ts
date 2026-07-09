@@ -39,6 +39,14 @@ test("ConflictRepository checks Zone and Device overlaps with SQLite-backed SQL"
         status TEXT NOT NULL
       )
     `);
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE visit_booking (
+        id TEXT PRIMARY KEY,
+        start_time DATETIME NOT NULL,
+        end_time DATETIME NOT NULL,
+        status TEXT NOT NULL
+      )
+    `);
 
     await prisma.$executeRaw`
       INSERT INTO zone_booking (id, zone_id, start_time, end_time, status)
@@ -68,6 +76,24 @@ test("ConflictRepository checks Zone and Device overlaps with SQLite-backed SQL"
         'zone-1',
         ${new Date("2026-01-01T14:00:00.000Z")},
         ${new Date("2026-01-01T15:00:00.000Z")},
+        'CANCELLED'
+      )
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO visit_booking (id, start_time, end_time, status)
+      VALUES (
+        'visit-booking-1',
+        ${new Date("2026-01-01T16:00:00.000Z")},
+        ${new Date("2026-01-01T17:00:00.000Z")},
+        'RESERVED'
+      )
+    `;
+    await prisma.$executeRaw`
+      INSERT INTO visit_booking (id, start_time, end_time, status)
+      VALUES (
+        'visit-booking-2',
+        ${new Date("2026-01-01T18:00:00.000Z")},
+        ${new Date("2026-01-01T19:00:00.000Z")},
         'CANCELLED'
       )
     `;
@@ -101,6 +127,27 @@ test("ConflictRepository checks Zone and Device overlaps with SQLite-backed SQL"
         zoneId: "zone-1",
         startTime: new Date("2026-01-01T14:30:00.000Z"),
         endTime: new Date("2026-01-01T15:30:00.000Z")
+      }),
+      false
+    );
+    assert.equal(
+      await repository.hasVisitConflict({
+        startTime: new Date("2026-01-01T16:30:00.000Z"),
+        endTime: new Date("2026-01-01T17:30:00.000Z")
+      }),
+      true
+    );
+    assert.equal(
+      await repository.hasVisitConflict({
+        startTime: new Date("2026-01-01T17:00:00.000Z"),
+        endTime: new Date("2026-01-01T18:00:00.000Z")
+      }),
+      false
+    );
+    assert.equal(
+      await repository.hasVisitConflict({
+        startTime: new Date("2026-01-01T18:30:00.000Z"),
+        endTime: new Date("2026-01-01T19:30:00.000Z")
       }),
       false
     );

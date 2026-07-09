@@ -1,6 +1,6 @@
 import { Prisma, type PrismaClient } from "@prisma/client";
 
-import type { ConflictRepository, DeviceConflictInput, ZoneConflictInput } from "./conflict.types.js";
+import type { ConflictRepository, DeviceConflictInput, TimeWindowInput, ZoneConflictInput } from "./conflict.types.js";
 
 type ConflictPrismaClient = Pick<PrismaClient, "$queryRaw">;
 
@@ -31,6 +31,19 @@ export function createConflictRepository(prisma: ConflictPrismaClient): Conflict
           FROM device_booking
           WHERE device_id = ${input.deviceId}
             AND status = 'RESERVED'
+            AND start_time < ${input.endTime}
+            AND end_time > ${input.startTime}
+        ) AS has_conflict
+      `);
+
+      return readHasConflict(rows);
+    },
+    async hasVisitConflict(input: TimeWindowInput) {
+      const rows = await prisma.$queryRaw<ConflictQueryRow[]>(Prisma.sql`
+        SELECT EXISTS (
+          SELECT 1
+          FROM visit_booking
+          WHERE status = 'RESERVED'
             AND start_time < ${input.endTime}
             AND end_time > ${input.startTime}
         ) AS has_conflict

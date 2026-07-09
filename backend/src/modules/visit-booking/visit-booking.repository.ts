@@ -1,19 +1,25 @@
 import { BookingStatus, Prisma, type PrismaClient } from "@prisma/client";
 
+import { createConflictRepository } from "../conflict/conflict.repository.js";
+import { createConflictService } from "../conflict/conflict.service.js";
 import type { CreateVisitBookingInput, VisitBookingRepository } from "./visit-booking.types.js";
 
 export function createVisitBookingRepository(prisma: PrismaClient): VisitBookingRepository {
   return {
     create(input: CreateVisitBookingInput) {
-      return prisma.visitBooking.create({
-        data: {
-          startTime: input.startTime,
-          endTime: input.endTime,
-          visitorOrg: input.visitorOrg,
-          visitorCount: input.visitorCount,
-          needDemo: input.needDemo ?? false,
-          status: BookingStatus.RESERVED
-        }
+      return prisma.$transaction(async tx => {
+        await createConflictService(createConflictRepository(tx)).assertVisitAvailable(input);
+
+        return tx.visitBooking.create({
+          data: {
+            startTime: input.startTime,
+            endTime: input.endTime,
+            visitorOrg: input.visitorOrg,
+            visitorCount: input.visitorCount,
+            needDemo: input.needDemo ?? false,
+            status: BookingStatus.RESERVED
+          }
+        });
       });
     },
     findMany() {

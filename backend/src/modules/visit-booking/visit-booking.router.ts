@@ -1,6 +1,7 @@
 import { Router, type ErrorRequestHandler } from "express";
 
 import { asyncHandler } from "../../middleware/async-handler.js";
+import { BookingConflictError, ConflictValidationError } from "../conflict/conflict.service.js";
 import { VisitBookingValidationError, type VisitBookingService } from "./visit-booking.service.js";
 
 export function createVisitBookingRouter(service: VisitBookingService): Router {
@@ -41,7 +42,12 @@ export function createVisitBookingRouter(service: VisitBookingService): Router {
 }
 
 const visitBookingErrorHandler: ErrorRequestHandler = (error, _req, res, next) => {
-  if (error instanceof VisitBookingValidationError) {
+  if (error instanceof BookingConflictError) {
+    res.status(409).json({ error: error.message });
+    return;
+  }
+
+  if (error instanceof VisitBookingValidationError || error instanceof ConflictValidationError) {
     res.status(400).json({ error: error.message });
     return;
   }
