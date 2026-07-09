@@ -395,6 +395,68 @@ test("booking services fetch, create, and cancel bookings", async () => {
       "PATCH /visit-bookings/visit-booking-1/cancel"
     ]
   );
+  assert.deepEqual(JSON.parse(requests[3]?.body ?? "{}"), {
+    zoneId: "zone-1",
+    startTime: "2025-12-31T18:00:00.000Z",
+    endTime: "2025-12-31T19:00:00.000Z"
+  });
+  assert.deepEqual(JSON.parse(requests[4]?.body ?? "{}"), {
+    deviceId: "device-1",
+    zoneId: "zone-1",
+    startTime: "2025-12-31T18:00:00.000Z",
+    endTime: "2025-12-31T19:00:00.000Z"
+  });
+  assert.deepEqual(JSON.parse(requests[5]?.body ?? "{}"), {
+    startTime: "2025-12-31T18:00:00.000Z",
+    endTime: "2025-12-31T19:00:00.000Z",
+    visitorOrg: "Acme Labs",
+    visitorCount: 3,
+    needDemo: false
+  });
+});
+
+test("booking create services preserve explicit timezone inputs", async () => {
+  let requestBody: string | undefined;
+  const apiFetch: typeof fetch = async (_url, init) => {
+    requestBody = String(init?.body);
+
+    return jsonResponse({
+      id: "zone-booking-1",
+      zoneId: "zone-1",
+      startTime: "2026-01-01T07:30:00.000Z",
+      endTime: "2026-01-01T08:30:00.000Z",
+      status: "RESERVED"
+    }, 201);
+  };
+
+  await createZoneBooking(
+    { zoneId: "zone-1", startTime: "2026-01-01T13:00:00+05:30", endTime: "2026-01-01T08:30:00.000Z" },
+    { apiFetch }
+  );
+
+  assert.deepEqual(JSON.parse(requestBody ?? "{}"), {
+    zoneId: "zone-1",
+    startTime: "2026-01-01T07:30:00.000Z",
+    endTime: "2026-01-01T08:30:00.000Z"
+  });
+});
+
+test("booking create services reject malformed time inputs before request", async () => {
+  let requestCount = 0;
+  const apiFetch: typeof fetch = async () => {
+    requestCount += 1;
+    return jsonResponse({}, 201);
+  };
+
+  await assert.rejects(
+    () => createZoneBooking({ zoneId: "zone-1", startTime: "not-a-date", endTime: "2026-01-01T03:00" }, { apiFetch }),
+    /booking time must be datetime-local or include a timezone offset/
+  );
+  await assert.rejects(
+    () => createZoneBooking({ zoneId: "zone-1", startTime: "2026-02-31T10:00", endTime: "2026-02-31T11:00" }, { apiFetch }),
+    /booking time must be a valid ISO date-time/
+  );
+  assert.equal(requestCount, 0);
 });
 
 test("booking services report failed requests", async () => {
