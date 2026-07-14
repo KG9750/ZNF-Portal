@@ -34,7 +34,7 @@ test("frontend scaffold exposes React app metadata", () => {
   );
   assert.deepEqual(
     navigationItems.map(item => item.label),
-    ["Dashboard", "Zones", "Devices", "Bookings"]
+    ["运行总览", "空间资源", "设备资源", "预约调度"]
   );
 });
 
@@ -89,7 +89,7 @@ test("shared UI components render badges, timelines, and tables", () => {
     })
   );
 
-  assert.match(badgeMarkup, /IN PROGRESS/);
+  assert.match(badgeMarkup, /处理中/);
   assert.match(badgeMarkup, /status-in_progress/);
   assert.match(timelineMarkup, /Booked/);
   assert.match(emptyTimelineMarkup, /No events/);
@@ -651,7 +651,7 @@ test("dashboard content renders loading and error states without fake totals", (
     })
   );
 
-  assert.match(loadingMarkup, /Loading dashboard data/);
+  assert.match(loadingMarkup, /正在加载运行数据/);
   assert.match(loadingMarkup, /<strong>-<\/strong>/);
   assert.match(errorMarkup, /Dashboard API request failed: 503/);
   assert.match(errorMarkup, /<strong>-<\/strong>/);
@@ -723,8 +723,10 @@ test("dashboard content renders overview data", () => {
   assert.match(markup, /device-1/);
   assert.match(markup, /Acme Labs/);
   assert.match(markup, /Arm Station 1/);
+  assert.match(markup, /机械臂/);
   assert.match(markup, /故障设备/);
   assert.match(markup, /工单状态/);
+  assert.match(markup, /故障/);
 });
 
 test("zone content renders list, detail, and current bookings", () => {
@@ -765,10 +767,11 @@ test("zone content renders list, detail, and current bookings", () => {
     })
   );
 
-  assert.match(markup, /Zone列表/);
-  assert.match(markup, /Zone详情/);
+  assert.match(markup, /空间列表/);
+  assert.match(markup, /空间详情/);
   assert.match(markup, /当前预约/);
   assert.match(markup, /Training Bay/);
+  assert.match(markup, /实验训练区/);
   assert.match(markup, /zone-booking-1/);
   assert.doesNotMatch(markup, /zone-booking-2/);
 });
@@ -799,7 +802,7 @@ test("zone content renders loading and error states", () => {
     })
   );
 
-  assert.match(loadingMarkup, /Loading zone data/);
+  assert.match(loadingMarkup, /正在加载空间数据/);
   assert.match(errorMarkup, /Zone API request failed: 500/);
 });
 
@@ -845,10 +848,11 @@ test("device content renders list, status, and zone details", () => {
     })
   );
 
-  assert.match(markup, /Device列表/);
-  assert.match(markup, /Device详情/);
+  assert.match(markup, /设备列表/);
+  assert.match(markup, /设备详情/);
   assert.match(markup, /Arm Station/);
-  assert.match(markup, /IN USE/);
+  assert.match(markup, /机械臂/);
+  assert.match(markup, /使用中/);
   assert.match(markup, /Training Bay \(zone-2\)/);
   assert.match(markup, /Home Bay \(zone-1\)/);
 });
@@ -879,7 +883,7 @@ test("device content renders loading and error states", () => {
     })
   );
 
-  assert.match(loadingMarkup, /Loading device data/);
+  assert.match(loadingMarkup, /正在加载设备数据/);
   assert.match(errorMarkup, /Device API request failed: 500/);
 });
 
@@ -941,7 +945,7 @@ test("booking content renders create forms and timeline data", () => {
           }
         ],
         error: null,
-        message: "Zone booking created"
+        message: "空间预约已创建"
       },
       onCancelVisit: () => undefined,
       onCancelZone: () => undefined,
@@ -951,14 +955,14 @@ test("booking content renders create forms and timeline data", () => {
     })
   );
 
-  assert.match(markup, /ZoneBooking/);
-  assert.match(markup, /DeviceBooking/);
-  assert.match(markup, /VisitBooking/);
+  assert.match(markup, /空间预约/);
+  assert.match(markup, /设备预约/);
+  assert.match(markup, /参观预约/);
   assert.match(markup, /Training Bay \(zone-1\)/);
   assert.match(markup, /Arm Station \(device-1\)/);
   assert.match(markup, /Acme Labs/);
-  assert.match(markup, /Cancel API unavailable/);
-  assert.match(markup, /Zone booking created/);
+  assert.match(markup, /暂无取消接口/);
+  assert.match(markup, /空间预约已创建/);
 });
 
 test("booking content renders loading and error states", () => {
@@ -1018,7 +1022,7 @@ test("booking content renders loading and error states", () => {
     })
   );
 
-  assert.match(loadingMarkup, /Loading booking data/);
+  assert.match(loadingMarkup, /正在加载预约数据/);
   assert.match(errorMarkup, /Booking API request failed/);
   assert.match(errorMarkup, /Training Bay \(zone-1\)/);
 });

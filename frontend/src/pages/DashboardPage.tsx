@@ -12,6 +12,7 @@ import {
   type WorkOrder,
   type ZoneBooking
 } from "../services/dashboard.js";
+import { formatDeviceType, formatWorkOrderType } from "../utils/displayLabels.js";
 
 type DashboardState =
   | { status: "loading"; data: null; error: null }
@@ -19,9 +20,9 @@ type DashboardState =
   | { status: "error"; data: null; error: string };
 
 const faultDeviceColumns: Array<TableColumn<Device>> = [
-  { header: "Device", key: "name", render: device => device.name },
-  { header: "Type", key: "type", render: device => device.type },
-  { header: "Current Zone", key: "currentZone", render: device => device.currentZoneId }
+  { header: "设备", key: "name", render: device => device.name },
+  { header: "类型", key: "type", render: device => formatDeviceType(device.type) },
+  { header: "所在空间", key: "currentZone", render: device => device.currentZoneId }
 ];
 
 export function DashboardPage() {
@@ -45,7 +46,7 @@ export function DashboardPage() {
           setState({
             status: "error",
             data: null,
-            error: error instanceof Error ? error.message : "Dashboard API request failed"
+            error: error instanceof Error ? error.message : "运行总览请求失败"
           });
         }
       });
@@ -65,11 +66,11 @@ export function DashboardContent({ state }: { state: DashboardState }) {
     const data = state.data;
 
     return [
-      { label: "Zone bookings", value: data?.todayZoneBookings.length ?? "-" },
-      { label: "Device bookings", value: data?.todayDeviceBookings.length ?? "-" },
-      { label: "Visit bookings", value: data?.todayVisitBookings.length ?? "-" },
-      { label: "Fault devices", value: data?.faultDevices.length ?? "-" },
-      { label: "Pending work orders", value: data?.pendingWorkOrders.length ?? "-" }
+      { label: "空间预约", value: data?.todayZoneBookings.length ?? "-" },
+      { label: "设备预约", value: data?.todayDeviceBookings.length ?? "-" },
+      { label: "参观预约", value: data?.todayVisitBookings.length ?? "-" },
+      { label: "故障设备", value: data?.faultDevices.length ?? "-" },
+      { label: "待处理工单", value: data?.pendingWorkOrders.length ?? "-" }
     ];
   }, [state.data]);
 
@@ -77,13 +78,14 @@ export function DashboardContent({ state }: { state: DashboardState }) {
     <section className="page dashboard-page">
       <header className="page-header dashboard-header">
         <div>
-          <p className="eyebrow">Operations</p>
-          <h1>Dashboard</h1>
+          <p className="eyebrow">运行中枢</p>
+          <h1>运行总览</h1>
+          <p className="page-summary">实时汇总今日预约、设备异常与待处理工单，保持训练场排程可见。</p>
         </div>
         <div className={`data-state data-state-${state.status}`}>{getStateLabel(state.status)}</div>
       </header>
 
-      <div className="metric-grid" aria-label={hasData ? "Dashboard totals" : "Dashboard totals unavailable"}>
+      <div className="metric-grid" aria-label={hasData ? "运行指标" : "运行指标暂不可用"}>
         {metrics.map(metric => (
           <article className="metric-card" key={metric.label}>
             <span>{metric.label}</span>
@@ -97,7 +99,7 @@ export function DashboardContent({ state }: { state: DashboardState }) {
       ) : null}
 
       {state.status === "loading" ? (
-        <div className="notice">Loading dashboard data...</div>
+        <div className="notice">正在加载运行数据...</div>
       ) : null}
 
       {state.data ? (
@@ -108,9 +110,9 @@ export function DashboardContent({ state }: { state: DashboardState }) {
             </div>
             <div className="booking-columns">
               <BookingList
-                title="Zone"
+                title="空间"
                 items={state.data.todayZoneBookings}
-                emptyLabel="No zone bookings today"
+                emptyLabel="今日暂无空间预约"
                 renderItem={booking => (
                   <>
                     <strong>{booking.zoneId}</strong>
@@ -119,9 +121,9 @@ export function DashboardContent({ state }: { state: DashboardState }) {
                 )}
               />
               <BookingList
-                title="Device"
+                title="设备"
                 items={state.data.todayDeviceBookings}
-                emptyLabel="No device bookings today"
+                emptyLabel="今日暂无设备预约"
                 renderItem={booking => (
                   <>
                     <strong>{booking.deviceId}</strong>
@@ -132,14 +134,14 @@ export function DashboardContent({ state }: { state: DashboardState }) {
                 )}
               />
               <BookingList
-                title="Visit"
+                title="参观"
                 items={state.data.todayVisitBookings}
-                emptyLabel="No visit bookings today"
+                emptyLabel="今日暂无参观预约"
                 renderItem={booking => (
                   <>
                     <strong>{booking.visitorOrg}</strong>
                     <span>
-                      {booking.visitorCount} visitors · {formatTimeRange(booking.startTime, booking.endTime)}
+                      {booking.visitorCount} 位访客 · {formatTimeRange(booking.startTime, booking.endTime)}
                     </span>
                   </>
                 )}
@@ -192,7 +194,7 @@ function DeviceStatusList({ devices }: { devices: Device[] }) {
   return (
     <Table
       columns={faultDeviceColumns}
-      emptyLabel="No fault devices"
+      emptyLabel="暂无故障设备"
       rowKey={device => device.id}
       rows={devices}
     />
@@ -201,7 +203,7 @@ function DeviceStatusList({ devices }: { devices: Device[] }) {
 
 function WorkOrderStatusList({ workOrders }: { workOrders: WorkOrder[] }) {
   if (workOrders.length === 0) {
-    return <p className="empty-state">No pending work orders</p>;
+    return <p className="empty-state">暂无待处理工单</p>;
   }
 
   return (
@@ -209,7 +211,7 @@ function WorkOrderStatusList({ workOrders }: { workOrders: WorkOrder[] }) {
       {workOrders.map(workOrder => (
         <li key={workOrder.id}>
           <div className="row-with-badge">
-            <strong>{workOrder.type}</strong>
+            <strong>{formatWorkOrderType(workOrder.type)}</strong>
             <StatusBadge status={workOrder.status} />
           </div>
           <span>{formatWorkOrderTarget(workOrder)}</span>
@@ -238,24 +240,24 @@ function formatTime(value: string): string {
 
 function formatWorkOrderTarget(workOrder: WorkOrder): string {
   if (workOrder.deviceId) {
-    return `Device ${workOrder.deviceId}`;
+    return `设备 ${workOrder.deviceId}`;
   }
 
   if (workOrder.zoneId) {
-    return `Zone ${workOrder.zoneId}`;
+    return `空间 ${workOrder.zoneId}`;
   }
 
-  return "Unassigned";
+  return "未分配";
 }
 
 function getStateLabel(status: DashboardState["status"]): string {
   if (status === "loading") {
-    return "Loading";
+    return "加载中";
   }
 
   if (status === "error") {
-    return "Error";
+    return "异常";
   }
 
-  return "Live";
+  return "在线";
 }

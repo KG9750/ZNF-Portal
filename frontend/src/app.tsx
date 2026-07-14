@@ -9,10 +9,10 @@ import { ZonePage } from "./pages/ZonePage.js";
 export const APP_TITLE = "ZNF-Portal";
 
 export const navigationItems = [
-  { label: "Dashboard", path: "/" },
-  { label: "Zones", path: "/zones" },
-  { label: "Devices", path: "/devices" },
-  { label: "Bookings", path: "/bookings" }
+  { label: "运行总览", path: "/" },
+  { label: "空间资源", path: "/zones" },
+  { label: "设备资源", path: "/devices" },
+  { label: "预约调度", path: "/bookings" }
 ] as const;
 
 export function App() {
