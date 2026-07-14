@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
-import { execFile } from "node:child_process";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { once } from "node:events";
+import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -18,6 +19,7 @@ const backendDirectory = dirname(fileURLToPath(new URL("../package.json", import
 const packagePath = join(backendDirectory, "package.json");
 const prismaCliPath = join(backendDirectory, "node_modules", "prisma", "build", "index.js");
 const schemaPath = join(backendDirectory, "prisma", "schema.prisma");
+const tsxCliPath = join(backendDirectory, "node_modules", "tsx", "dist", "cli.mjs");
 
 test("database migration remains an explicit deployment step", async () => {
   const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as {
@@ -27,6 +29,29 @@ test("database migration remains an explicit deployment step", async () => {
   assert.equal(packageJson.scripts["db:migrate"], "prisma migrate deploy");
   assert.doesNotMatch(packageJson.scripts.start ?? "", /migrat/i);
   assert.doesNotMatch(packageJson.scripts.dev ?? "", /migrat/i);
+});
+
+test("backend startup leaves an unmigrated database untouched", async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "znf-portal-startup-"));
+  const databasePath = join(temporaryDirectory, "unmigrated.db");
+  const child = spawn(process.execPath, [tsxCliPath, "src/index.ts"], {
+    cwd: backendDirectory,
+    env: {
+      ...process.env,
+      DATABASE_URL: `file:${databasePath}`,
+      NODE_ENV: "test",
+      PORT: "0"
+    }
+  });
+
+  try {
+    await waitForBackendStartup(child);
+    await stopBackend(child);
+    await assert.rejects(access(databasePath), (error: NodeJS.ErrnoException) => error.code === "ENOENT");
+  } finally {
+    await stopBackend(child);
+    await rm(temporaryDirectory, { force: true, recursive: true });
+  }
 });
 
 test("committed migration cold-starts fresh Prisma-backed applications", async () => {
@@ -90,11 +115,13 @@ async function verifyColdStart(databasePath: string): Promise<void> {
     assert.equal(detailResponse.status, 200);
     assert.deepEqual(detail, created);
   } finally {
-    if (server !== undefined) {
-      await closeServer(server);
+    try {
+      if (server !== undefined) {
+        await closeServer(server);
+      }
+    } finally {
+      await disconnectPrisma(prisma);
     }
-
-    await disconnectPrisma(prisma);
   }
 }
 
@@ -136,4 +163,50 @@ async function closeServer(server: Server): Promise<void> {
 
 async function disconnectPrisma(prisma: PrismaClient): Promise<void> {
   await prisma.$disconnect();
+}
+
+async function waitForBackendStartup(child: ChildProcessWithoutNullStreams): Promise<void> {
+  child.stdout.setEncoding("utf8");
+  child.stderr.setEncoding("utf8");
+
+  let stderr = "";
+  child.stderr.on("data", (chunk: string) => {
+    stderr += chunk;
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Backend startup timed out: ${stderr}`));
+    }, 5_000);
+
+    const onData = (chunk: string) => {
+      if (chunk.includes("ZNF-Portal backend listening on port 0")) {
+        cleanup();
+        resolve();
+      }
+    };
+    const onExit = (code: number | null, signal: NodeJS.Signals | null) => {
+      cleanup();
+      reject(new Error(`Backend exited before startup (code=${code}, signal=${signal}): ${stderr}`));
+    };
+    const cleanup = () => {
+      clearTimeout(timeout);
+      child.stdout.off("data", onData);
+      child.off("exit", onExit);
+    };
+
+    child.stdout.on("data", onData);
+    child.once("exit", onExit);
+  });
+}
+
+async function stopBackend(child: ChildProcessWithoutNullStreams): Promise<void> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return;
+  }
+
+  const exited = once(child, "exit");
+  child.kill("SIGTERM");
+  await exited;
 }
