@@ -32,7 +32,7 @@ npm ci
 npm run dev
 ```
 
-前端开发服务器会在终端中显示本地访问地址。停止并重新启动后端时不需要重复 migration；只有数据库为空或 migration 发生变化时才需要再次运行 `npm run db:migrate`。
+前端开发服务器会在终端中显示本地访问地址。后端启动不会自动运行 migration；对同一数据库重复执行 `npm run db:migrate` 是幂等的，没有待执行 migration 时不会修改业务表。
 
 ## 禁止范围
 - CRM系统

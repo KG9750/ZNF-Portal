@@ -16,10 +16,10 @@ import { createPrismaClient } from "../src/prisma/client.js";
 
 const execFileAsync = promisify(execFile);
 const backendDirectory = dirname(fileURLToPath(new URL("../package.json", import.meta.url)));
+const committedMigrationPath = join(backendDirectory, "prisma", "migrations", "0001_initial", "migration.sql");
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const packagePath = join(backendDirectory, "package.json");
-const prismaCliPath = join(backendDirectory, "node_modules", "prisma", "build", "index.js");
 const schemaPath = join(backendDirectory, "prisma", "schema.prisma");
-const tsxCliPath = join(backendDirectory, "node_modules", "tsx", "dist", "cli.mjs");
 
 test("database migration remains an explicit deployment step", async () => {
   const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as {
@@ -34,8 +34,9 @@ test("database migration remains an explicit deployment step", async () => {
 test("backend startup leaves an unmigrated database untouched", async () => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "znf-portal-startup-"));
   const databasePath = join(temporaryDirectory, "unmigrated.db");
-  const child = spawn(process.execPath, [tsxCliPath, "src/index.ts"], {
+  const child = spawn(npmCommand, ["run", "dev"], {
     cwd: backendDirectory,
+    detached: process.platform !== "win32",
     env: {
       ...process.env,
       DATABASE_URL: `file:${databasePath}`,
@@ -50,6 +51,40 @@ test("backend startup leaves an unmigrated database untouched", async () => {
     await assert.rejects(access(databasePath), (error: NodeJS.ErrnoException) => error.code === "ENOENT");
   } finally {
     await stopBackend(child);
+    await rm(temporaryDirectory, { force: true, recursive: true });
+  }
+});
+
+test("committed migration matches the current Prisma schema", async () => {
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), "znf-portal-migration-diff-"));
+  const generatedMigrationPath = join(temporaryDirectory, "migration.sql");
+
+  try {
+    await execFileAsync(npmCommand, [
+      "exec",
+      "--",
+      "prisma",
+      "migrate",
+      "diff",
+      "--from-empty",
+      "--to-schema-datamodel",
+      schemaPath,
+      "--script",
+      "--output",
+      generatedMigrationPath
+    ], {
+      cwd: backendDirectory,
+      env: {
+        ...process.env,
+        DATABASE_URL: `file:${join(temporaryDirectory, "diff.db")}`
+      }
+    });
+
+    assert.equal(
+      await readFile(generatedMigrationPath, "utf8"),
+      await readFile(committedMigrationPath, "utf8")
+    );
+  } finally {
     await rm(temporaryDirectory, { force: true, recursive: true });
   }
 });
@@ -126,7 +161,7 @@ async function verifyColdStart(databasePath: string): Promise<void> {
 }
 
 async function deployMigrations(databaseUrl: string): Promise<void> {
-  await execFileAsync(process.execPath, [prismaCliPath, "migrate", "deploy", "--schema", schemaPath], {
+  await execFileAsync(npmCommand, ["run", "db:migrate"], {
     cwd: backendDirectory,
     env: {
       ...process.env,
@@ -170,9 +205,10 @@ async function waitForBackendStartup(child: ChildProcessWithoutNullStreams): Pro
   child.stderr.setEncoding("utf8");
 
   let stderr = "";
-  child.stderr.on("data", (chunk: string) => {
+  const onStderr = (chunk: string) => {
     stderr += chunk;
-  });
+  };
+  child.stderr.on("data", onStderr);
 
   await new Promise<void>((resolve, reject) => {
     const timeout = setTimeout(() => {
@@ -193,6 +229,7 @@ async function waitForBackendStartup(child: ChildProcessWithoutNullStreams): Pro
     const cleanup = () => {
       clearTimeout(timeout);
       child.stdout.off("data", onData);
+      child.stderr.off("data", onStderr);
       child.off("exit", onExit);
     };
 
@@ -207,6 +244,12 @@ async function stopBackend(child: ChildProcessWithoutNullStreams): Promise<void>
   }
 
   const exited = once(child, "exit");
-  child.kill("SIGTERM");
+
+  if (process.platform === "win32" || child.pid === undefined) {
+    child.kill("SIGTERM");
+  } else {
+    process.kill(-child.pid, "SIGTERM");
+  }
+
   await exited;
 }
