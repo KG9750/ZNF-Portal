@@ -10,6 +10,30 @@
 - WorkOrder（工单）
 - Visit（参观）
 
+## 本地冷启动
+
+后端不会在启动时自动修改数据库。首次启动或 Schema migration 更新后，必须先显式执行 migration。
+
+```bash
+git clone https://github.com/KG9750/ZNF-Portal.git
+cd ZNF-Portal/backend
+npm ci
+export DATABASE_URL="file:$PWD/prisma/dev.db"
+touch prisma/dev.db
+npm run db:migrate
+npm run dev
+```
+
+后端默认监听 `http://localhost:3000`。另开一个终端启动前端：
+
+```bash
+cd ZNF-Portal/frontend
+npm ci
+npm run dev
+```
+
+前端开发服务器会在终端中显示本地访问地址。停止并重新启动后端时不需要重复 migration；只有数据库为空或 migration 发生变化时才需要再次运行 `npm run db:migrate`。
+
 ## 禁止范围
 - CRM系统
 - IoT系统
