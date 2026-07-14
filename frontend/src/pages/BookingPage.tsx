@@ -77,7 +77,7 @@ export function BookingPage() {
       })
       .catch(error => {
         if (!controller.signal.aborted) {
-          setState(createErrorState(error instanceof Error ? error.message : "Booking API request failed"));
+          setState(createErrorState(error instanceof Error ? error.message : "预约调度请求失败"));
         }
       });
 
@@ -89,8 +89,8 @@ export function BookingPage() {
   return (
     <BookingContent
       state={state}
-      onCancelVisit={id => handleMutation(setState, () => cancelVisitBooking(id), "Visit booking cancelled")}
-      onCancelZone={id => handleMutation(setState, () => cancelZoneBooking(id), "Zone booking cancelled")}
+      onCancelVisit={id => handleMutation(setState, () => cancelVisitBooking(id), "参观预约已取消")}
+      onCancelZone={id => handleMutation(setState, () => cancelZoneBooking(id), "空间预约已取消")}
       onCreateDevice={event => handleCreateDeviceBooking(event, setState)}
       onCreateVisit={event => handleCreateVisitBooking(event, setState)}
       onCreateZone={event => handleCreateZoneBooking(event, setState)}
@@ -120,23 +120,24 @@ export function BookingContent({
     <section className="page booking-page">
       <header className="page-header dashboard-header">
         <div>
-          <p className="eyebrow">Scheduling</p>
-          <h1>Bookings</h1>
+          <p className="eyebrow">调度控制台</p>
+          <h1>预约调度</h1>
+          <p className="page-summary">创建空间、设备与参观预约，所有时间按场馆 UTC+08 提交。</p>
         </div>
         <div className={`data-state data-state-${state.status}`}>{getStateLabel(state.status)}</div>
       </header>
 
       {state.status === "error" ? <div className="notice error-notice">{state.error}</div> : null}
-      {state.status === "loading" ? <div className="notice">Loading booking data...</div> : null}
+      {state.status === "loading" ? <div className="notice">正在加载预约数据...</div> : null}
 
       {canRenderBookingData(state) ? (
         <>
           {state.status === "ready" && state.message ? <div className="notice success-notice">{state.message}</div> : null}
           <div className="booking-management-grid">
-            <BookingPanel count={state.zoneBookings.length} title="ZoneBooking">
+            <BookingPanel count={state.zoneBookings.length} title="空间预约">
               <ZoneBookingForm onSubmit={onCreateZone} zones={state.zones} />
               <Timeline
-                emptyLabel="No zone bookings"
+                emptyLabel="暂无空间预约"
                 items={sortByStartTime(state.zoneBookings)}
                 renderItem={booking => (
                   <>
@@ -147,7 +148,7 @@ export function BookingContent({
                     <span>{formatTimeRange(booking.startTime, booking.endTime)}</span>
                     <BookingActions
                       canCancel={booking.status === "RESERVED"}
-                      disabledLabel="Already cancelled"
+                      disabledLabel="已取消"
                       onCancel={() => onCancelZone(booking.id)}
                     />
                   </>
@@ -155,10 +156,10 @@ export function BookingContent({
               />
             </BookingPanel>
 
-            <BookingPanel count={state.deviceBookings.length} title="DeviceBooking">
+            <BookingPanel count={state.deviceBookings.length} title="设备预约">
               <DeviceBookingForm devices={state.devices} onSubmit={onCreateDevice} zones={state.zones} />
               <Timeline
-                emptyLabel="No device bookings"
+                emptyLabel="暂无设备预约"
                 items={sortByStartTime(state.deviceBookings)}
                 renderItem={booking => (
                   <>
@@ -170,17 +171,17 @@ export function BookingContent({
                       {formatZoneLabel(booking.zoneId, zoneById)} · {formatTimeRange(booking.startTime, booking.endTime)}
                     </span>
                     <button className="text-button" disabled type="button">
-                      Cancel API unavailable
+                      暂无取消接口
                     </button>
                   </>
                 )}
               />
             </BookingPanel>
 
-            <BookingPanel count={state.visitBookings.length} title="VisitBooking">
+            <BookingPanel count={state.visitBookings.length} title="参观预约">
               <VisitBookingForm onSubmit={onCreateVisit} />
               <Timeline
-                emptyLabel="No visit bookings"
+                emptyLabel="暂无参观预约"
                 items={sortByStartTime(state.visitBookings)}
                 renderItem={booking => (
                   <>
@@ -189,12 +190,12 @@ export function BookingContent({
                       <StatusBadge status={booking.status} />
                     </div>
                     <span>
-                      {booking.visitorCount} visitors · {booking.needDemo ? "Demo" : "No demo"} ·{" "}
+                      {booking.visitorCount} 位访客 · {booking.needDemo ? "需要演示" : "无需演示"} ·{" "}
                       {formatTimeRange(booking.startTime, booking.endTime)}
                     </span>
                     <BookingActions
                       canCancel={booking.status === "RESERVED"}
-                      disabledLabel="Already cancelled"
+                      disabledLabel="已取消"
                       onCancel={() => onCancelVisit(booking.id)}
                     />
                   </>
@@ -224,7 +225,7 @@ function ZoneBookingForm({ onSubmit, zones }: { onSubmit: (event: FormEvent<HTML
   return (
     <form className="booking-form" onSubmit={onSubmit}>
       <label>
-        Zone
+        空间
         <select name="zoneId" required>
           {zones.map(zone => (
             <option key={zone.id} value={zone.id}>
@@ -235,7 +236,7 @@ function ZoneBookingForm({ onSubmit, zones }: { onSubmit: (event: FormEvent<HTML
       </label>
       <TimeFields />
       <button className="primary-button" type="submit">
-        Create
+        创建预约
       </button>
     </form>
   );
@@ -253,7 +254,7 @@ function DeviceBookingForm({
   return (
     <form className="booking-form" onSubmit={onSubmit}>
       <label>
-        Device
+        设备
         <select name="deviceId" required>
           {devices.map(device => (
             <option key={device.id} value={device.id}>
@@ -263,7 +264,7 @@ function DeviceBookingForm({
         </select>
       </label>
       <label>
-        Zone
+        空间
         <select name="zoneId" required>
           {zones.map(zone => (
             <option key={zone.id} value={zone.id}>
@@ -274,7 +275,7 @@ function DeviceBookingForm({
       </label>
       <TimeFields />
       <button className="primary-button" type="submit">
-        Create
+        创建预约
       </button>
     </form>
   );
@@ -284,20 +285,20 @@ function VisitBookingForm({ onSubmit }: { onSubmit: (event: FormEvent<HTMLFormEl
   return (
     <form className="booking-form" onSubmit={onSubmit}>
       <label>
-        Visitor org
+        访客组织
         <input name="visitorOrg" required />
       </label>
       <label>
-        Visitors
+        访客人数
         <input min="1" name="visitorCount" required type="number" />
       </label>
       <label className="checkbox-field">
         <input name="needDemo" type="checkbox" />
-        Demo needed
+        需要演示
       </label>
       <TimeFields />
       <button className="primary-button" type="submit">
-        Create
+        创建预约
       </button>
     </form>
   );
@@ -307,11 +308,11 @@ function TimeFields() {
   return (
     <>
       <label>
-        Start
+        开始时间
         <input name="startTime" required type="datetime-local" />
       </label>
       <label>
-        End
+        结束时间
         <input name="endTime" required type="datetime-local" />
       </label>
     </>
@@ -329,7 +330,7 @@ function BookingActions({
 }) {
   return (
     <button className="text-button" disabled={!canCancel} onClick={onCancel} type="button">
-      {canCancel ? "Cancel" : disabledLabel}
+      {canCancel ? "取消预约" : disabledLabel}
     </button>
   );
 }
@@ -369,7 +370,7 @@ async function handleMutation(
     });
     return true;
   } catch (error) {
-    const messageText = error instanceof Error ? error.message : "Booking API request failed";
+    const messageText = error instanceof Error ? error.message : "预约调度请求失败";
 
     setState(previous => createErrorState(messageText, previous));
     return false;
@@ -389,7 +390,7 @@ function handleCreateZoneBooking(event: FormEvent<HTMLFormElement>, setState: Di
         startTime: readFormString(data, "startTime"),
         zoneId: readFormString(data, "zoneId")
       }),
-    "Zone booking created"
+    "空间预约已创建"
   ).then(success => {
     if (success) {
       form.reset();
@@ -411,7 +412,7 @@ function handleCreateDeviceBooking(event: FormEvent<HTMLFormElement>, setState: 
         startTime: readFormString(data, "startTime"),
         zoneId: readFormString(data, "zoneId")
       }),
-    "Device booking created"
+    "设备预约已创建"
   ).then(success => {
     if (success) {
       form.reset();
@@ -434,7 +435,7 @@ function handleCreateVisitBooking(event: FormEvent<HTMLFormElement>, setState: D
         visitorCount: Number(readFormString(data, "visitorCount")),
         visitorOrg: readFormString(data, "visitorOrg")
       }),
-    "Visit booking created"
+    "参观预约已创建"
   ).then(success => {
     if (success) {
       form.reset();
@@ -522,12 +523,12 @@ function canRenderBookingData(state: BookingPageState): boolean {
 
 function getStateLabel(status: BookingPageState["status"]): string {
   if (status === "loading") {
-    return "Loading";
+    return "加载中";
   }
 
   if (status === "error") {
-    return "Error";
+    return "异常";
   }
 
-  return "Live";
+  return "在线";
 }

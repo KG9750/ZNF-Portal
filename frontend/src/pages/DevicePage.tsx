@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { StatusBadge } from "../components/StatusBadge.js";
+import { getStatusLabel, StatusBadge } from "../components/StatusBadge.js";
 import { getDevices, type Device } from "../services/devices.js";
 import { getZones, type Zone } from "../services/zones.js";
+import { formatDeviceType } from "../utils/displayLabels.js";
 
 type DevicePageState =
   | { status: "loading"; devices: []; zones: []; selectedDeviceId: null; error: null }
@@ -40,7 +41,7 @@ export function DevicePage() {
             devices: [],
             zones: [],
             selectedDeviceId: null,
-            error: error instanceof Error ? error.message : "Device API request failed"
+            error: error instanceof Error ? error.message : "设备资源请求失败"
           });
         }
       });
@@ -67,8 +68,9 @@ export function DeviceContent({
     <section className="page device-page">
       <header className="page-header dashboard-header">
         <div>
-          <p className="eyebrow">Resources</p>
-          <h1>Devices</h1>
+          <p className="eyebrow">设备矩阵</p>
+          <h1>设备资源</h1>
+          <p className="page-summary">追踪设备所在空间、运行状态与维护风险。</p>
         </div>
         <div className={`data-state data-state-${state.status}`}>{getStateLabel(state.status)}</div>
       </header>
@@ -78,14 +80,14 @@ export function DeviceContent({
       ) : null}
 
       {state.status === "loading" ? (
-        <div className="notice">Loading device data...</div>
+        <div className="notice">正在加载设备数据...</div>
       ) : null}
 
       {state.status === "ready" ? (
         <div className="device-layout">
           <section className="panel device-list-panel" aria-labelledby="device-list-title">
             <div className="panel-header">
-              <h2 id="device-list-title">Device列表</h2>
+              <h2 id="device-list-title">设备列表</h2>
               <span className="panel-count">{state.devices.length}</span>
             </div>
             <DeviceList
@@ -98,7 +100,7 @@ export function DeviceContent({
 
           <section className="panel" aria-labelledby="device-detail-title">
             <div className="panel-header">
-              <h2 id="device-detail-title">Device详情</h2>
+              <h2 id="device-detail-title">设备详情</h2>
               {selectedDevice ? <StatusBadge status={selectedDevice.status} /> : null}
             </div>
             <DeviceDetail device={selectedDevice} zoneById={zoneById} />
@@ -121,7 +123,7 @@ function DeviceList({
   onSelectDevice: (deviceId: string) => void;
 }) {
   if (devices.length === 0) {
-    return <p className="empty-state">No devices</p>;
+    return <p className="empty-state">暂无设备</p>;
   }
 
   return (
@@ -147,7 +149,7 @@ function DeviceList({
 
 function DeviceDetail({ device, zoneById }: { device: Device | null; zoneById: Map<string, Zone> }) {
   if (device === null) {
-    return <p className="empty-state">No device selected</p>;
+    return <p className="empty-state">请选择一个设备</p>;
   }
 
   return (
@@ -157,27 +159,27 @@ function DeviceDetail({ device, zoneById }: { device: Device | null; zoneById: M
         <dd>{device.id}</dd>
       </div>
       <div>
-        <dt>Name</dt>
+        <dt>名称</dt>
         <dd>{device.name}</dd>
       </div>
       <div>
-        <dt>Type</dt>
-        <dd>{device.type}</dd>
+        <dt>类型</dt>
+        <dd>{formatDeviceType(device.type)}</dd>
       </div>
       <div>
-        <dt>Status</dt>
-        <dd>{device.status.replaceAll("_", " ")}</dd>
+        <dt>状态</dt>
+        <dd>{getStatusLabel(device.status)}</dd>
       </div>
       <div>
-        <dt>Current Zone</dt>
+        <dt>所在空间</dt>
         <dd>{formatZoneLabel(device.currentZoneId, zoneById)}</dd>
       </div>
       <div>
-        <dt>Home Zone</dt>
+        <dt>归属空间</dt>
         <dd>{formatZoneLabel(device.homeZoneId, zoneById)}</dd>
       </div>
       <div>
-        <dt>Updated</dt>
+        <dt>更新</dt>
         <dd>{formatDateTime(device.updatedAt)}</dd>
       </div>
     </dl>
@@ -227,12 +229,12 @@ function formatDateTime(value: string): string {
 
 function getStateLabel(status: DevicePageState["status"]): string {
   if (status === "loading") {
-    return "Loading";
+    return "加载中";
   }
 
   if (status === "error") {
-    return "Error";
+    return "异常";
   }
 
-  return "Live";
+  return "在线";
 }

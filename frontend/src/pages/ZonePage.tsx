@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "../components/StatusBadge.js";
 import { Timeline } from "../components/Timeline.js";
 import { getZoneBookings, getZones, type Zone, type ZoneBooking } from "../services/zones.js";
+import { formatZoneType } from "../utils/displayLabels.js";
 
 type ZonePageState =
   | { status: "loading"; zones: []; zoneBookings: []; selectedZoneId: null; error: null }
@@ -40,7 +41,7 @@ export function ZonePage() {
             zones: [],
             zoneBookings: [],
             selectedZoneId: null,
-            error: error instanceof Error ? error.message : "Zone API request failed"
+            error: error instanceof Error ? error.message : "空间资源请求失败"
           });
         }
       });
@@ -70,8 +71,9 @@ export function ZoneContent({
     <section className="page zone-page">
       <header className="page-header dashboard-header">
         <div>
-          <p className="eyebrow">Resources</p>
-          <h1>Zones</h1>
+          <p className="eyebrow">资源网格</p>
+          <h1>空间资源</h1>
+          <p className="page-summary">查看训练空间状态、基础信息与当前占用窗口。</p>
         </div>
         <div className={`data-state data-state-${state.status}`}>{getStateLabel(state.status)}</div>
       </header>
@@ -81,14 +83,14 @@ export function ZoneContent({
       ) : null}
 
       {state.status === "loading" ? (
-        <div className="notice">Loading zone data...</div>
+        <div className="notice">正在加载空间数据...</div>
       ) : null}
 
       {state.status === "ready" ? (
         <div className="zone-layout">
           <section className="panel zone-list-panel" aria-labelledby="zone-list-title">
             <div className="panel-header">
-              <h2 id="zone-list-title">Zone列表</h2>
+              <h2 id="zone-list-title">空间列表</h2>
               <span className="panel-count">{state.zones.length}</span>
             </div>
             <ZoneList zones={state.zones} selectedZoneId={state.selectedZoneId} onSelectZone={onSelectZone} />
@@ -96,7 +98,7 @@ export function ZoneContent({
 
           <section className="panel" aria-labelledby="zone-detail-title">
             <div className="panel-header">
-              <h2 id="zone-detail-title">Zone详情</h2>
+              <h2 id="zone-detail-title">空间详情</h2>
               {selectedZone ? <StatusBadge status={selectedZone.status} /> : null}
             </div>
             <ZoneDetail zone={selectedZone} />
@@ -125,7 +127,7 @@ function ZoneList({
   onSelectZone: (zoneId: string) => void;
 }) {
   if (zones.length === 0) {
-    return <p className="empty-state">No zones</p>;
+    return <p className="empty-state">暂无空间</p>;
   }
 
   return (
@@ -139,7 +141,7 @@ function ZoneList({
           >
             <span>
               <strong>{zone.name}</strong>
-              <small>{zone.type}</small>
+              <small>{formatZoneType(zone.type)}</small>
             </span>
             <StatusBadge status={zone.status} />
           </button>
@@ -151,7 +153,7 @@ function ZoneList({
 
 function ZoneDetail({ zone }: { zone: Zone | null }) {
   if (zone === null) {
-    return <p className="empty-state">No zone selected</p>;
+    return <p className="empty-state">请选择一个空间</p>;
   }
 
   return (
@@ -161,15 +163,15 @@ function ZoneDetail({ zone }: { zone: Zone | null }) {
         <dd>{zone.id}</dd>
       </div>
       <div>
-        <dt>Name</dt>
+        <dt>名称</dt>
         <dd>{zone.name}</dd>
       </div>
       <div>
-        <dt>Type</dt>
-        <dd>{zone.type}</dd>
+        <dt>类型</dt>
+        <dd>{formatZoneType(zone.type)}</dd>
       </div>
       <div>
-        <dt>Updated</dt>
+        <dt>更新</dt>
         <dd>{formatDateTime(zone.updatedAt)}</dd>
       </div>
     </dl>
@@ -180,7 +182,7 @@ function CurrentBookingList({ bookings }: { bookings: ZoneBooking[] }) {
   return (
     <Timeline
       className="data-list"
-      emptyLabel="No current bookings"
+      emptyLabel="当前无预约占用"
       items={bookings}
       renderItem={booking => (
         <>
@@ -249,12 +251,12 @@ function formatDateTime(value: string): string {
 
 function getStateLabel(status: ZonePageState["status"]): string {
   if (status === "loading") {
-    return "Loading";
+    return "加载中";
   }
 
   if (status === "error") {
-    return "Error";
+    return "异常";
   }
 
-  return "Live";
+  return "在线";
 }

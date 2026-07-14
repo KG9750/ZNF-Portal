@@ -16,8 +16,17 @@ interface AppShellProps {
 export function AppShell({ activePath, title, navigationItems, onNavigate, children }: AppShellProps) {
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="Primary">
-        <div className="brand">{title}</div>
+      <aside className="sidebar" aria-label="主导航">
+        <div className="brand-block">
+          <div className="brand-mark" aria-hidden="true">Z</div>
+          <div>
+            <div className="brand">{title}</div>
+            <p className="brand-subtitle">具身训练场运行中枢</p>
+          </div>
+        </div>
+        <div className="side-kicker">
+          <span>资源 · 调度 · 执行</span>
+        </div>
         <nav className="nav-list">
           {navigationItems.map(item => (
             <a
@@ -34,6 +43,10 @@ export function AppShell({ activePath, title, navigationItems, onNavigate, child
             </a>
           ))}
         </nav>
+        <div className="side-footer">
+          <span>UTC+08 场馆时区</span>
+          <strong>实时运行</strong>
+        </div>
       </aside>
       <main className="main-panel">{children}</main>
     </div>
